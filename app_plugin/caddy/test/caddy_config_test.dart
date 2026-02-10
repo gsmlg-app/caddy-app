@@ -643,5 +643,77 @@ void main() {
       );
       expect(config1, isNot(equals(config2)));
     });
+
+    test('toJson omits domain subjects when domain is empty', () {
+      const config = CaddyConfig(
+        listenAddress: ':443',
+        tls: CaddyTlsConfig(
+          enabled: true,
+          domain: '',
+          dnsProvider: DnsProvider.cloudflare,
+        ),
+      );
+
+      final json = config.toJson();
+      final policies =
+          json['apps']['tls']['automation']['policies'] as List;
+      final policy = policies.first as Map<String, dynamic>;
+      expect(policy.containsKey('subjects'), isFalse);
+    });
+
+    test('toJson omits S3 optional fields when empty', () {
+      const config = CaddyConfig(
+        storage: CaddyStorageConfig(
+          enabled: true,
+          bucket: 'my-bucket',
+          endpoint: '',
+          region: '',
+          prefix: '',
+        ),
+      );
+
+      final json = config.toJson();
+      final storage = json['storage'] as Map<String, dynamic>;
+      expect(storage['module'], 's3');
+      expect(storage['bucket'], 'my-bucket');
+      expect(storage.containsKey('host'), isFalse);
+      expect(storage.containsKey('region'), isFalse);
+      expect(storage.containsKey('prefix'), isFalse);
+    });
+
+    test('toStorageJson with rawJson preserves listen address', () {
+      final config = CaddyConfig(
+        rawJson: jsonEncode({'apps': {}}),
+        listenAddress: 'localhost:2015',
+      );
+
+      final json = config.toStorageJson();
+      expect(json['_rawJson'], isNotNull);
+      expect(json['listenAddress'], 'localhost:2015');
+    });
+
+    test('httpsWithDns custom params', () {
+      final config = CaddyConfigPresets.httpsWithDns(
+        listenAddress: ':8443',
+        domain: 'custom.com',
+        dnsProvider: DnsProvider.duckdns,
+      );
+      expect(config.listenAddress, ':8443');
+      expect(config.tls.domain, 'custom.com');
+      expect(config.tls.dnsProvider, DnsProvider.duckdns);
+    });
+
+    test('httpsWithS3 custom params', () {
+      final config = CaddyConfigPresets.httpsWithS3(
+        listenAddress: ':8443',
+        domain: 'custom.com',
+        dnsProvider: DnsProvider.route53,
+        s3Bucket: 'custom-bucket',
+      );
+      expect(config.listenAddress, ':8443');
+      expect(config.tls.domain, 'custom.com');
+      expect(config.tls.dnsProvider, DnsProvider.route53);
+      expect(config.storage.bucket, 'custom-bucket');
+    });
   });
 }
