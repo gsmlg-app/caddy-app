@@ -6,6 +6,7 @@ This directory contains detailed documentation for the Caddy App project.
 
 | Document | Description |
 |----------|-------------|
+| [CADDY_APP.md](CADDY_APP.md) | **Caddy App development guide** - implementation status, architecture, and contribution guide |
 | [BRICKS.md](BRICKS.md) | Mason bricks guide - code generation templates for screens, BLoCs, repositories, and more |
 | [BRICK_TESTING.md](BRICK_TESTING.md) | Guide for testing Mason bricks and validation |
 | [DOCUMENTATION.md](DOCUMENTATION.md) | Error handling and logging system architecture |
@@ -14,6 +15,15 @@ This directory contains detailed documentation for the Caddy App project.
 | [USAGE.md](USAGE.md) | Error handling system usage and setup guide |
 
 ## Document Summaries
+
+### CADDY_APP.md
+Comprehensive development guide for the Caddy App features:
+- Implementation status (what's built vs. what needs native Go layer)
+- Architecture overview (BLoC pattern, data layer, service layer)
+- Data models and state flow
+- Testing strategy and examples
+- Next steps for contributors
+- Development commands
 
 ### BRICKS.md
 Complete guide for using Mason bricks in this project. Covers all available bricks:
