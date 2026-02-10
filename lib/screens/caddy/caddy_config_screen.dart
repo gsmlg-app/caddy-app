@@ -1,8 +1,13 @@
+import 'dart:convert';
+import 'dart:io';
+
 import 'package:app_locale/app_locale.dart';
 import 'package:caddy_bloc/caddy_bloc.dart';
 import 'package:caddy_service/caddy_service.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:path_provider/path_provider.dart';
 
 class CaddyConfigScreen extends StatefulWidget {
   static const name = 'Caddy Config';
@@ -110,6 +115,41 @@ class _CaddyConfigScreenState extends State<CaddyConfigScreen>
     ).showSnackBar(SnackBar(content: Text(context.l10n.success)));
   }
 
+  void _copyConfig() {
+    final config = _buildConfig();
+    final jsonStr = const JsonEncoder.withIndent('  ').convert(config.toJson());
+    Clipboard.setData(ClipboardData(text: jsonStr));
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text(context.l10n.caddyConfigCopied)));
+  }
+
+  Future<void> _exportConfig() async {
+    final config = _buildConfig();
+    final jsonStr = const JsonEncoder.withIndent('  ').convert(config.toJson());
+    try {
+      final dir = await getApplicationDocumentsDirectory();
+      final timestamp = DateTime.now()
+          .toIso8601String()
+          .replaceAll(':', '-')
+          .split('.')
+          .first;
+      final file = File('${dir.path}/caddy-config-$timestamp.json');
+      await file.writeAsString(jsonStr);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(context.l10n.caddyConfigExported(file.path))),
+        );
+      }
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(context.l10n.caddyConfigExportFailed)),
+        );
+      }
+    }
+  }
+
   void _showSaveAsDialog() {
     final nameController = TextEditingController();
     showDialog(
@@ -180,6 +220,7 @@ class _CaddyConfigScreenState extends State<CaddyConfigScreen>
                   'spa' => CaddyConfigPresets.spaServer(),
                   'api' => CaddyConfigPresets.apiGateway(),
                   'https' => CaddyConfigPresets.httpsWithDns(),
+                  's3' => CaddyConfigPresets.httpsWithS3(),
                   _ => null,
                 };
                 if (preset != null) _loadPreset(preset);
@@ -225,6 +266,14 @@ class _CaddyConfigScreenState extends State<CaddyConfigScreen>
                     contentPadding: EdgeInsets.zero,
                   ),
                 ),
+                PopupMenuItem(
+                  value: 's3',
+                  child: ListTile(
+                    leading: const Icon(Icons.cloud),
+                    title: Text(context.l10n.caddyPresetS3Full),
+                    contentPadding: EdgeInsets.zero,
+                  ),
+                ),
               ],
             ),
             TextButton(
@@ -239,6 +288,16 @@ class _CaddyConfigScreenState extends State<CaddyConfigScreen>
               icon: const Icon(Icons.save_as),
               tooltip: context.l10n.caddySaveConfigAs,
               onPressed: _showSaveAsDialog,
+            ),
+            IconButton(
+              icon: const Icon(Icons.copy),
+              tooltip: context.l10n.caddyConfigCopy,
+              onPressed: _copyConfig,
+            ),
+            IconButton(
+              icon: const Icon(Icons.file_download),
+              tooltip: context.l10n.caddyConfigExport,
+              onPressed: _exportConfig,
             ),
             BlocBuilder<CaddyBloc, CaddyState>(
               buildWhen: (prev, curr) =>

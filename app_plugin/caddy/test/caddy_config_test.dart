@@ -621,6 +621,18 @@ void main() {
       expect(restored.storage, equals(original.storage));
     });
 
+    test('httpsWithS3 preset includes both TLS and S3', () {
+      final config = CaddyConfigPresets.httpsWithS3();
+      expect(config.tls.enabled, isTrue);
+      expect(config.tls.domain, 'example.com');
+      expect(config.tls.dnsProvider, DnsProvider.cloudflare);
+      expect(config.storage.enabled, isTrue);
+      expect(config.storage.bucket, 'my-caddy-storage');
+      final json = config.toJson();
+      expect((json['apps'] as Map).containsKey('tls'), isTrue);
+      expect(json.containsKey('storage'), isTrue);
+    });
+
     test('equatable includes TLS and storage in comparison', () {
       const config1 = CaddyConfig(
         tls: CaddyTlsConfig(enabled: true),

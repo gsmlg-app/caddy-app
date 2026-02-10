@@ -460,6 +460,30 @@ class CaddyConfigPresets {
     );
   }
 
+  /// Preset for HTTPS with DNS challenge and S3 certificate storage.
+  static CaddyConfig httpsWithS3({
+    String listenAddress = ':443',
+    String domain = 'example.com',
+    DnsProvider dnsProvider = DnsProvider.cloudflare,
+    String s3Bucket = 'my-caddy-storage',
+  }) {
+    return CaddyConfig(
+      listenAddress: listenAddress,
+      tls: CaddyTlsConfig(
+        enabled: true,
+        domain: domain,
+        dnsProvider: dnsProvider,
+      ),
+      storage: CaddyStorageConfig(enabled: true, bucket: s3Bucket),
+      routes: [
+        const CaddyRoute(
+          path: '/*',
+          handler: StaticFileHandler(root: '/var/www/html'),
+        ),
+      ],
+    );
+  }
+
   static String? validate(CaddyConfig config) {
     try {
       config.toJson();

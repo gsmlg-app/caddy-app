@@ -165,5 +165,18 @@
   "caddyS3Bucket": "Bucket Name",
   "caddyS3Region": "Region",
   "caddyS3Prefix": "Key Prefix",
+  "caddyPresetS3Full": "HTTPS + S3 Storage",
+  "caddyConfigCopy": "Copy Config",
+  "caddyConfigCopied": "Config copied to clipboard",
+  "caddyConfigExport": "Export Config",
+  "caddyConfigExported": "Config exported to {path}",
+  "@caddyConfigExported": {
+    "placeholders": {
+      "path": {
+        "type": "String"
+      }
+    }
+  },
+  "caddyConfigExportFailed": "Failed to export config",
   "@@description": "App description"
 }
