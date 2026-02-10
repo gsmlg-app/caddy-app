@@ -1,0 +1,1 @@
+enum FieldBlocBuilderControlAffinity { leading, trailing }
