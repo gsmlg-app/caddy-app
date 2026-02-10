@@ -1,8 +1,11 @@
+import 'dart:io';
+
 import 'package:app_locale/app_locale.dart';
 import 'package:caddy_bloc/caddy_bloc.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:path_provider/path_provider.dart';
 
 class CaddyLogScreen extends StatefulWidget {
   static const name = 'Caddy Logs';
@@ -86,6 +89,39 @@ class _CaddyLogScreenState extends State<CaddyLogScreen> {
               ScaffoldMessenger.of(context).showSnackBar(
                 const SnackBar(content: Text('Logs copied to clipboard')),
               );
+            },
+          ),
+          IconButton(
+            icon: const Icon(Icons.save_alt),
+            tooltip: context.l10n.caddyExportLogs,
+            onPressed: () async {
+              final logs = context.read<CaddyBloc>().state.filteredLogs.join(
+                '\n',
+              );
+              if (logs.isEmpty) return;
+              try {
+                final dir = await getApplicationDocumentsDirectory();
+                final timestamp = DateTime.now()
+                    .toIso8601String()
+                    .replaceAll(':', '-')
+                    .split('.')
+                    .first;
+                final file = File('${dir.path}/caddy-logs-$timestamp.txt');
+                await file.writeAsString(logs);
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text(context.l10n.caddyLogsSaved(file.path)),
+                    ),
+                  );
+                }
+              } catch (_) {
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text(context.l10n.caddyLogsExportFailed)),
+                  );
+                }
+              }
             },
           ),
           IconButton(

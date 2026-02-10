@@ -68,11 +68,12 @@ void main() {
       expect(find.byIcon(Icons.lock), findsOneWidget);
     });
 
-    testWidgets('shows copy and clear buttons', (tester) async {
+    testWidgets('shows copy, export, and clear buttons', (tester) async {
       await tester.pumpWidget(_buildTestWidget());
       await tester.pumpAndSettle();
 
       expect(find.byIcon(Icons.copy), findsOneWidget);
+      expect(find.byIcon(Icons.save_alt), findsOneWidget);
       expect(find.byIcon(Icons.delete), findsOneWidget);
     });
 

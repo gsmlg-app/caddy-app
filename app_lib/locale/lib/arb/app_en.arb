@@ -117,5 +117,18 @@
   "caddyReverseProxy": "Reverse Proxy",
   "caddyFileRoot": "File Root Directory",
   "caddyUpstreamAddress": "Upstream Address",
+  "caddyExportLogs": "Export Logs",
+  "caddyLogsSaved": "Logs saved to {path}",
+  "@caddyLogsSaved": {
+    "placeholders": {
+      "path": {
+        "type": "String"
+      }
+    }
+  },
+  "caddyLogsExportFailed": "Failed to export logs",
+  "caddySavedConfigs": "Saved Configs",
+  "caddyConfigName": "Config Name",
+  "caddySaveConfigAs": "Save As",
   "@@description": "App description"
 }
