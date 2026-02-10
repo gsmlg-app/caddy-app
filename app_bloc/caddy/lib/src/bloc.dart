@@ -1,5 +1,7 @@
 import 'dart:async';
+import 'dart:convert';
 
+import 'package:app_database/app_database.dart';
 import 'package:bloc/bloc.dart';
 import 'package:caddy_service/caddy_service.dart';
 import 'package:equatable/equatable.dart';
@@ -8,7 +10,9 @@ part 'event.dart';
 part 'state.dart';
 
 class CaddyBloc extends Bloc<CaddyEvent, CaddyState> {
-  CaddyBloc(this._service) : super(CaddyState.initial()) {
+  CaddyBloc(this._service, {AppDatabase? database})
+    : _database = database,
+      super(CaddyState.initial()) {
     on<CaddyStart>(_onStart);
     on<CaddyStop>(_onStop);
     on<CaddyReload>(_onReload);
@@ -21,6 +25,10 @@ class CaddyBloc extends Bloc<CaddyEvent, CaddyState> {
     on<CaddySetLogSearch>(_onSetLogSearch);
     on<CaddyLifecyclePause>(_onLifecyclePause);
     on<CaddyLifecycleResume>(_onLifecycleResume);
+    on<CaddyLoadSavedConfig>(_onLoadSavedConfig);
+    on<CaddySaveConfig>(_onSaveConfig);
+    on<CaddyDeleteSavedConfig>(_onDeleteSavedConfig);
+    on<CaddyLoadNamedConfig>(_onLoadNamedConfig);
 
     _logSubscription = _service.logStream.listen(
       (line) => add(CaddyLogReceived(line)),
@@ -28,6 +36,7 @@ class CaddyBloc extends Bloc<CaddyEvent, CaddyState> {
   }
 
   final CaddyService _service;
+  final AppDatabase? _database;
   StreamSubscription<String>? _logSubscription;
   CaddyConfig? _configBeforePause;
 
@@ -115,6 +124,94 @@ class CaddyBloc extends Bloc<CaddyEvent, CaddyState> {
       final status = await _service.start(config);
       emit(state.copyWith(status: status));
     }
+  }
+
+  Future<void> _onLoadSavedConfig(
+    CaddyLoadSavedConfig event,
+    Emitter<CaddyState> emit,
+  ) async {
+    final db = _database;
+    if (db == null) return;
+
+    final configs = await db.getAllCaddyConfigs();
+    final names = configs.map((c) => c.name).toList();
+    final active = configs.where((c) => c.isActive).firstOrNull;
+
+    if (active != null) {
+      final config = CaddyConfig.fromJson(
+        jsonDecode(active.configJson) as Map<String, dynamic>,
+      );
+      emit(
+        state.copyWith(
+          config: config,
+          adminEnabled: active.adminEnabled,
+          savedConfigNames: names,
+          activeConfigName: active.name,
+        ),
+      );
+    } else {
+      emit(state.copyWith(savedConfigNames: names));
+    }
+  }
+
+  Future<void> _onSaveConfig(
+    CaddySaveConfig event,
+    Emitter<CaddyState> emit,
+  ) async {
+    final db = _database;
+    if (db == null) return;
+
+    final configJson = jsonEncode(state.config.toStorageJson());
+    await db.upsertCaddyConfig(
+      name: event.name,
+      configJson: configJson,
+      adminEnabled: state.adminEnabled,
+      isActive: true,
+    );
+    await db.setActiveCaddyConfig(event.name);
+
+    final configs = await db.getAllCaddyConfigs();
+    final names = configs.map((c) => c.name).toList();
+    emit(state.copyWith(savedConfigNames: names, activeConfigName: event.name));
+  }
+
+  Future<void> _onDeleteSavedConfig(
+    CaddyDeleteSavedConfig event,
+    Emitter<CaddyState> emit,
+  ) async {
+    final db = _database;
+    if (db == null) return;
+
+    await db.deleteCaddyConfig(event.name);
+    final configs = await db.getAllCaddyConfigs();
+    final names = configs.map((c) => c.name).toList();
+    final newActive = state.activeConfigName == event.name
+        ? null
+        : state.activeConfigName;
+    emit(state.copyWith(savedConfigNames: names, activeConfigName: newActive));
+  }
+
+  Future<void> _onLoadNamedConfig(
+    CaddyLoadNamedConfig event,
+    Emitter<CaddyState> emit,
+  ) async {
+    final db = _database;
+    if (db == null) return;
+
+    final saved = await db.getCaddyConfigByName(event.name);
+    if (saved == null) return;
+
+    final config = CaddyConfig.fromJson(
+      jsonDecode(saved.configJson) as Map<String, dynamic>,
+    );
+    await db.setActiveCaddyConfig(event.name);
+    emit(
+      state.copyWith(
+        config: config,
+        adminEnabled: saved.adminEnabled,
+        activeConfigName: event.name,
+      ),
+    );
   }
 
   @override

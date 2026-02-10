@@ -63,3 +63,25 @@ final class CaddyLifecyclePause extends CaddyEvent {
 final class CaddyLifecycleResume extends CaddyEvent {
   const CaddyLifecycleResume();
 }
+
+final class CaddyLoadSavedConfig extends CaddyEvent {
+  const CaddyLoadSavedConfig();
+}
+
+final class CaddySaveConfig extends CaddyEvent {
+  const CaddySaveConfig(this.name);
+
+  final String name;
+}
+
+final class CaddyDeleteSavedConfig extends CaddyEvent {
+  const CaddyDeleteSavedConfig(this.name);
+
+  final String name;
+}
+
+final class CaddyLoadNamedConfig extends CaddyEvent {
+  const CaddyLoadNamedConfig(this.name);
+
+  final String name;
+}

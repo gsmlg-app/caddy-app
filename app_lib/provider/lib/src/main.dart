@@ -81,7 +81,11 @@ class _AppBlocProviderState extends State<AppBlocProvider> {
       routeNames: widget.routeNames,
     );
     _gamepadBloc.add(const GamepadStartListening());
-    _caddyBloc = CaddyBloc(CaddyService.instance);
+    _caddyBloc = CaddyBloc(
+      CaddyService.instance,
+      database: context.read<AppDatabase>(),
+    );
+    _caddyBloc.add(const CaddyLoadSavedConfig());
   }
 
   @override

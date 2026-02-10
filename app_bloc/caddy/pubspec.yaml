@@ -13,6 +13,7 @@ dependencies:
   flutter:
     sdk: flutter
 
+  app_database: any
   caddy_service: any
 
 dev_dependencies:

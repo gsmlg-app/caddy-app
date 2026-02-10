@@ -53,15 +53,23 @@ class CaddyConfig extends Equatable {
   String toJsonString({bool adminEnabled = false}) {
     final json = toJson();
     if (adminEnabled) {
-      json['admin'] = {
-        'listen': 'localhost:2019',
-      };
+      json['admin'] = {'listen': 'localhost:2019'};
     } else {
-      json['admin'] = {
-        'disabled': true,
-      };
+      json['admin'] = {'disabled': true};
     }
     return jsonEncode(json);
+  }
+
+  Map<String, dynamic> toStorageJson() {
+    if (rawJson != null) {
+      return {'_rawJson': rawJson, 'listenAddress': listenAddress};
+    }
+    return {
+      'listenAddress': listenAddress,
+      'routes': routes
+          .map((r) => {'path': r.path, 'handler': r.handler.toJson()})
+          .toList(),
+    };
   }
 
   CaddyConfig copyWith({

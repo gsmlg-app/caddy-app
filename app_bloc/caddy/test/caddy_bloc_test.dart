@@ -1,3 +1,6 @@
+import 'dart:convert';
+
+import 'package:app_database/app_database.dart';
 import 'package:bloc_test/bloc_test.dart';
 import 'package:caddy_bloc/caddy_bloc.dart';
 import 'package:caddy_service/caddy_service.dart';
@@ -21,8 +24,7 @@ class MockCaddyService extends CaddyService {
   Future<CaddyStatus> start(
     CaddyConfig config, {
     bool adminEnabled = false,
-  }) async =>
-      startResult;
+  }) async => startResult;
 
   @override
   Future<CaddyStatus> stop() async => stopResult;
@@ -31,8 +33,7 @@ class MockCaddyService extends CaddyService {
   Future<CaddyStatus> reload(
     CaddyConfig config, {
     bool adminEnabled = false,
-  }) async =>
-      reloadResult;
+  }) async => reloadResult;
 
   @override
   Future<CaddyStatus> getStatus() async => statusResult;
@@ -134,9 +135,7 @@ void main() {
       build: () => CaddyBloc(mockService),
       seed: () => CaddyState.initial().copyWith(logs: ['log1', 'log2']),
       act: (bloc) => bloc.add(const CaddyClearLogs()),
-      expect: () => [
-        isA<CaddyState>().having((s) => s.logs, 'logs', isEmpty),
-      ],
+      expect: () => [isA<CaddyState>().having((s) => s.logs, 'logs', isEmpty)],
     );
 
     blocTest<CaddyBloc, CaddyState>(
@@ -144,8 +143,11 @@ void main() {
       build: () => CaddyBloc(mockService),
       act: (bloc) => bloc.add(const CaddyStatusCheck()),
       expect: () => [
-        isA<CaddyState>()
-            .having((s) => s.lastStatusCheck, 'lastStatusCheck', isNotNull),
+        isA<CaddyState>().having(
+          (s) => s.lastStatusCheck,
+          'lastStatusCheck',
+          isNotNull,
+        ),
       ],
     );
 
@@ -157,16 +159,8 @@ void main() {
         bloc.add(const CaddyToggleAdmin());
       },
       expect: () => [
-        isA<CaddyState>().having(
-          (s) => s.adminEnabled,
-          'adminEnabled',
-          true,
-        ),
-        isA<CaddyState>().having(
-          (s) => s.adminEnabled,
-          'adminEnabled',
-          false,
-        ),
+        isA<CaddyState>().having((s) => s.adminEnabled, 'adminEnabled', true),
+        isA<CaddyState>().having((s) => s.adminEnabled, 'adminEnabled', false),
       ],
     );
 
@@ -302,5 +296,120 @@ void main() {
       );
       expect(state.filteredLogs, hasLength(2));
     });
+  });
+
+  group('Config persistence', () {
+    late AppDatabase db;
+
+    setUp(() {
+      db = AppDatabase.forTesting();
+    });
+
+    tearDown(() async {
+      await db.close();
+    });
+
+    blocTest<CaddyBloc, CaddyState>(
+      'CaddySaveConfig persists config to database',
+      build: () => CaddyBloc(mockService, database: db),
+      seed: () => CaddyState.initial().copyWith(
+        config: const CaddyConfig(listenAddress: 'localhost:9090'),
+        adminEnabled: true,
+      ),
+      act: (bloc) => bloc.add(const CaddySaveConfig('production')),
+      verify: (bloc) async {
+        expect(bloc.state.savedConfigNames, contains('production'));
+        expect(bloc.state.activeConfigName, 'production');
+        final saved = await db.getCaddyConfigByName('production');
+        expect(saved, isNotNull);
+        expect(saved!.adminEnabled, isTrue);
+        final json = jsonDecode(saved.configJson) as Map<String, dynamic>;
+        expect(json, isNotEmpty);
+      },
+    );
+
+    blocTest<CaddyBloc, CaddyState>(
+      'CaddyLoadSavedConfig loads active config from database',
+      build: () => CaddyBloc(mockService, database: db),
+      setUp: () async {
+        await db.upsertCaddyConfig(
+          name: 'saved-config',
+          configJson: jsonEncode(
+            const CaddyConfig(listenAddress: 'localhost:4000').toStorageJson(),
+          ),
+          adminEnabled: true,
+          isActive: true,
+        );
+      },
+      act: (bloc) => bloc.add(const CaddyLoadSavedConfig()),
+      verify: (bloc) {
+        expect(bloc.state.config.listenAddress, 'localhost:4000');
+        expect(bloc.state.adminEnabled, isTrue);
+        expect(bloc.state.savedConfigNames, contains('saved-config'));
+        expect(bloc.state.activeConfigName, 'saved-config');
+      },
+    );
+
+    blocTest<CaddyBloc, CaddyState>(
+      'CaddyLoadNamedConfig switches to named config',
+      build: () => CaddyBloc(mockService, database: db),
+      setUp: () async {
+        await db.upsertCaddyConfig(
+          name: 'config-a',
+          configJson: jsonEncode(
+            const CaddyConfig(listenAddress: 'localhost:3000').toStorageJson(),
+          ),
+        );
+        await db.upsertCaddyConfig(
+          name: 'config-b',
+          configJson: jsonEncode(
+            const CaddyConfig(listenAddress: 'localhost:4000').toStorageJson(),
+          ),
+          adminEnabled: true,
+        );
+      },
+      act: (bloc) => bloc.add(const CaddyLoadNamedConfig('config-b')),
+      verify: (bloc) {
+        expect(bloc.state.config.listenAddress, 'localhost:4000');
+        expect(bloc.state.adminEnabled, isTrue);
+        expect(bloc.state.activeConfigName, 'config-b');
+      },
+    );
+
+    blocTest<CaddyBloc, CaddyState>(
+      'CaddyDeleteSavedConfig removes config from database',
+      build: () => CaddyBloc(mockService, database: db),
+      setUp: () async {
+        await db.upsertCaddyConfig(
+          name: 'to-delete',
+          configJson: jsonEncode(const CaddyConfig().toStorageJson()),
+        );
+      },
+      seed: () => CaddyState.initial().copyWith(
+        savedConfigNames: ['to-delete'],
+        activeConfigName: 'to-delete',
+      ),
+      act: (bloc) => bloc.add(const CaddyDeleteSavedConfig('to-delete')),
+      verify: (bloc) async {
+        expect(bloc.state.savedConfigNames, isNot(contains('to-delete')));
+        expect(bloc.state.activeConfigName, isNull);
+        final saved = await db.getCaddyConfigByName('to-delete');
+        expect(saved, isNull);
+      },
+    );
+
+    blocTest<CaddyBloc, CaddyState>(
+      'CaddyLoadSavedConfig with no database does nothing',
+      build: () => CaddyBloc(mockService),
+      act: (bloc) => bloc.add(const CaddyLoadSavedConfig()),
+      expect: () => [],
+    );
+
+    blocTest<CaddyBloc, CaddyState>(
+      'CaddySaveConfig with no database does nothing',
+      build: () => CaddyBloc(mockService),
+      act: (bloc) => bloc.add(const CaddySaveConfig('test')),
+      expect: () => [],
+    );
   });
 }

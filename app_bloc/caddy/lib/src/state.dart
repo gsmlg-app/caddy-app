@@ -1,5 +1,7 @@
 part of 'bloc.dart';
 
+const _sentinel = Object();
+
 class CaddyState extends Equatable {
   const CaddyState({
     required this.status,
@@ -9,6 +11,8 @@ class CaddyState extends Equatable {
     this.adminEnabled = false,
     this.logFilter = CaddyLogLevel.all,
     this.logSearchQuery = '',
+    this.savedConfigNames = const [],
+    this.activeConfigName,
   });
 
   factory CaddyState.initial() {
@@ -22,6 +26,8 @@ class CaddyState extends Equatable {
   final bool adminEnabled;
   final CaddyLogLevel logFilter;
   final String logSearchQuery;
+  final List<String> savedConfigNames;
+  final String? activeConfigName;
 
   bool get isRunning => status is CaddyRunning;
   bool get isStopped => status is CaddyStopped;
@@ -57,6 +63,8 @@ class CaddyState extends Equatable {
     bool? adminEnabled,
     CaddyLogLevel? logFilter,
     String? logSearchQuery,
+    List<String>? savedConfigNames,
+    Object? activeConfigName = _sentinel,
   }) {
     return CaddyState(
       status: status ?? this.status,
@@ -66,6 +74,10 @@ class CaddyState extends Equatable {
       adminEnabled: adminEnabled ?? this.adminEnabled,
       logFilter: logFilter ?? this.logFilter,
       logSearchQuery: logSearchQuery ?? this.logSearchQuery,
+      savedConfigNames: savedConfigNames ?? this.savedConfigNames,
+      activeConfigName: activeConfigName == _sentinel
+          ? this.activeConfigName
+          : activeConfigName as String?,
     );
   }
 
@@ -78,6 +90,8 @@ class CaddyState extends Equatable {
     adminEnabled,
     logFilter,
     logSearchQuery,
+    savedConfigNames,
+    activeConfigName,
   ];
 }
 
