@@ -28,9 +28,15 @@ ThemeData _buildThemeData(ColorScheme colorScheme) {
       backgroundColor: colorScheme.secondaryContainer,
       indicatorColor: colorScheme.primary,
       selectedIconTheme: IconThemeData(color: colorScheme.onPrimary),
-      unselectedIconTheme: IconThemeData(color: colorScheme.onSecondaryContainer),
-      selectedLabelTextStyle: TextStyle(color: colorScheme.onSecondaryContainer),
-      unselectedLabelTextStyle: TextStyle(color: colorScheme.onSecondaryContainer),
+      unselectedIconTheme: IconThemeData(
+        color: colorScheme.onSecondaryContainer,
+      ),
+      selectedLabelTextStyle: TextStyle(
+        color: colorScheme.onSecondaryContainer,
+      ),
+      unselectedLabelTextStyle: TextStyle(
+        color: colorScheme.onSecondaryContainer,
+      ),
     ),
     // NavigationDrawer styling - same as rail for consistency
     navigationDrawerTheme: NavigationDrawerThemeData(

@@ -17,12 +17,17 @@ void main(List<String> args) async {
   // Get current project name from pubspec.yaml
   final pubspecFile = File('pubspec.yaml');
   if (!pubspecFile.existsSync()) {
-    print('Error: pubspec.yaml not found. Run this script from the project root.');
+    print(
+      'Error: pubspec.yaml not found. Run this script from the project root.',
+    );
     exit(1);
   }
 
   final pubspecContent = pubspecFile.readAsStringSync();
-  final nameMatch = RegExp(r'^name:\s*(\S+)', multiLine: true).firstMatch(pubspecContent);
+  final nameMatch = RegExp(
+    r'^name:\s*(\S+)',
+    multiLine: true,
+  ).firstMatch(pubspecContent);
   final currentName = nameMatch?.group(1);
 
   if (currentName == null) {
@@ -31,7 +36,9 @@ void main(List<String> args) async {
   }
 
   if (currentName != templateName) {
-    print('Project has already been renamed from "$templateName" to "$currentName".');
+    print(
+      'Project has already been renamed from "$templateName" to "$currentName".',
+    );
     print('This script is only for initial project setup.');
     exit(0);
   }
@@ -52,7 +59,9 @@ void main(List<String> args) async {
   }
 
   if (!RegExp(r'^[a-z][a-z0-9_]*$').hasMatch(newName)) {
-    print('Error: Project name must be in snake_case (lowercase letters, numbers, underscores).');
+    print(
+      'Error: Project name must be in snake_case (lowercase letters, numbers, underscores).',
+    );
     print('       Must start with a letter.');
     exit(1);
   }
@@ -120,11 +129,17 @@ void main(List<String> args) async {
   print('Next steps:');
   print('  1. Run: melos bootstrap');
   print('  2. Update app icons in app_widget/artwork/assets/icon/');
-  print('  3. Update app info in android/app/build.gradle and ios/Runner/Info.plist');
+  print(
+    '  3. Update app info in android/app/build.gradle and ios/Runner/Info.plist',
+  );
   print('  4. Optionally update .github/workflows/release.yml:');
   print('     - Replace "app-" with your app name in asset_name fields');
   print('  5. In Claude Code, run: /speckit.constitution');
-  print('     (This regenerates the project constitution for your new project)');
-  print('  6. Commit your changes: git add -A && git commit -m "chore: initialize project as $newName"');
+  print(
+    '     (This regenerates the project constitution for your new project)',
+  );
+  print(
+    '  6. Commit your changes: git add -A && git commit -m "chore: initialize project as $newName"',
+  );
   print('');
 }

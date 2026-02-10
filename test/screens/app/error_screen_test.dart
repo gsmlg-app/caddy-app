@@ -42,8 +42,6 @@ void main() {
     testWidgets('ErrorScreen renders correctly with error message', (
       WidgetTester tester,
     ) async {
-      const errorMessage = 'Test error message';
-
       await tester.pumpWidget(
         MaterialApp.router(
           routerConfig: router,

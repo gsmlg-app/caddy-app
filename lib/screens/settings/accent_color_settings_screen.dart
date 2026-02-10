@@ -147,10 +147,7 @@ class _ColorOption extends StatelessWidget {
           color: color,
           shape: BoxShape.circle,
           border: isSelected
-              ? Border.all(
-                  color: CupertinoColors.white,
-                  width: 2,
-                )
+              ? Border.all(color: CupertinoColors.white, width: 2)
               : null,
           boxShadow: isSelected
               ? [
