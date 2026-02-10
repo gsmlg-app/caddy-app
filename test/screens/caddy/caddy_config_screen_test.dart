@@ -141,5 +141,23 @@ void main() {
       expect(bloc.state.config.listenAddress, 'localhost:9090');
       bloc.close();
     });
+
+    testWidgets('shows save as button', (tester) async {
+      await tester.pumpWidget(_buildTestWidget());
+      await tester.pumpAndSettle();
+
+      expect(find.byIcon(Icons.save_as), findsOneWidget);
+    });
+
+    testWidgets('save as button opens name dialog', (tester) async {
+      await tester.pumpWidget(_buildTestWidget());
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.byIcon(Icons.save_as));
+      await tester.pumpAndSettle();
+
+      expect(find.byType(AlertDialog), findsOneWidget);
+      expect(find.text('Save As'), findsOneWidget);
+    });
   });
 }

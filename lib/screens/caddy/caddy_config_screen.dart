@@ -108,87 +108,181 @@ class _CaddyConfigScreenState extends State<CaddyConfigScreen>
     ).showSnackBar(SnackBar(content: Text(context.l10n.success)));
   }
 
+  void _showSaveAsDialog() {
+    final nameController = TextEditingController();
+    showDialog(
+      context: context,
+      builder: (dialogContext) {
+        return AlertDialog(
+          title: Text(dialogContext.l10n.caddySaveConfigAs),
+          content: TextField(
+            controller: nameController,
+            autofocus: true,
+            decoration: InputDecoration(
+              labelText: dialogContext.l10n.caddyConfigName,
+              border: const OutlineInputBorder(),
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(dialogContext).pop(),
+              child: Text(dialogContext.l10n.cancel),
+            ),
+            FilledButton(
+              onPressed: () {
+                final name = nameController.text.trim();
+                if (name.isEmpty) return;
+                _saveConfig();
+                context.read<CaddyBloc>().add(CaddySaveConfig(name));
+                Navigator.of(dialogContext).pop();
+                ScaffoldMessenger.of(
+                  context,
+                ).showSnackBar(SnackBar(content: Text(context.l10n.success)));
+              },
+              child: Text(dialogContext.l10n.caddySave),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: Text(context.l10n.caddyConfig),
-        bottom: TabBar(
-          controller: _tabController,
-          tabs: [
-            Tab(text: context.l10n.caddyConfigSimple),
-            Tab(text: context.l10n.caddyConfigRaw),
-          ],
-        ),
-        actions: [
-          PopupMenuButton<String>(
-            icon: const Icon(Icons.snippet_folder),
-            tooltip: context.l10n.caddyConfigPresets,
-            onSelected: (value) {
-              final preset = switch (value) {
-                'static' => CaddyConfigPresets.staticFileServer(),
-                'proxy' => CaddyConfigPresets.reverseProxy(),
-                'spa' => CaddyConfigPresets.spaServer(),
-                'api' => CaddyConfigPresets.apiGateway(),
-                _ => null,
-              };
-              if (preset != null) _loadPreset(preset);
-            },
-            itemBuilder: (context) => [
-              PopupMenuItem(
-                value: 'static',
-                child: ListTile(
-                  leading: const Icon(Icons.folder),
-                  title: Text(context.l10n.caddyPresetStaticFile),
-                  contentPadding: EdgeInsets.zero,
-                ),
-              ),
-              PopupMenuItem(
-                value: 'proxy',
-                child: ListTile(
-                  leading: const Icon(Icons.swap_horiz),
-                  title: Text(context.l10n.caddyPresetReverseProxy),
-                  contentPadding: EdgeInsets.zero,
-                ),
-              ),
-              PopupMenuItem(
-                value: 'spa',
-                child: ListTile(
-                  leading: const Icon(Icons.web),
-                  title: Text(context.l10n.caddyPresetSpa),
-                  contentPadding: EdgeInsets.zero,
-                ),
-              ),
-              PopupMenuItem(
-                value: 'api',
-                child: ListTile(
-                  leading: const Icon(Icons.api),
-                  title: Text(context.l10n.caddyPresetApiGateway),
-                  contentPadding: EdgeInsets.zero,
-                ),
-              ),
+    return BlocListener<CaddyBloc, CaddyState>(
+      listenWhen: (prev, curr) =>
+          prev.activeConfigName != curr.activeConfigName,
+      listener: (context, state) {
+        _listenController.text = state.config.listenAddress;
+        _rawJsonController.text =
+            state.config.rawJson ?? state.config.toJsonString();
+      },
+      child: Scaffold(
+        appBar: AppBar(
+          title: Text(context.l10n.caddyConfig),
+          bottom: TabBar(
+            controller: _tabController,
+            tabs: [
+              Tab(text: context.l10n.caddyConfigSimple),
+              Tab(text: context.l10n.caddyConfigRaw),
             ],
           ),
-          TextButton(
-            onPressed: _validateConfig,
-            child: Text(context.l10n.caddyValidate),
-          ),
-          TextButton(
-            onPressed: _saveConfig,
-            child: Text(context.l10n.caddySave),
-          ),
-          TextButton(
-            onPressed: _applyConfig,
-            child: Text(context.l10n.caddyApply),
-          ),
-        ],
-      ),
-      body: TabBarView(
-        controller: _tabController,
-        children: [
-          _SimpleConfigForm(listenController: _listenController),
-          _RawJsonEditor(controller: _rawJsonController),
-        ],
+          actions: [
+            PopupMenuButton<String>(
+              icon: const Icon(Icons.snippet_folder),
+              tooltip: context.l10n.caddyConfigPresets,
+              onSelected: (value) {
+                final preset = switch (value) {
+                  'static' => CaddyConfigPresets.staticFileServer(),
+                  'proxy' => CaddyConfigPresets.reverseProxy(),
+                  'spa' => CaddyConfigPresets.spaServer(),
+                  'api' => CaddyConfigPresets.apiGateway(),
+                  _ => null,
+                };
+                if (preset != null) _loadPreset(preset);
+              },
+              itemBuilder: (context) => [
+                PopupMenuItem(
+                  value: 'static',
+                  child: ListTile(
+                    leading: const Icon(Icons.folder),
+                    title: Text(context.l10n.caddyPresetStaticFile),
+                    contentPadding: EdgeInsets.zero,
+                  ),
+                ),
+                PopupMenuItem(
+                  value: 'proxy',
+                  child: ListTile(
+                    leading: const Icon(Icons.swap_horiz),
+                    title: Text(context.l10n.caddyPresetReverseProxy),
+                    contentPadding: EdgeInsets.zero,
+                  ),
+                ),
+                PopupMenuItem(
+                  value: 'spa',
+                  child: ListTile(
+                    leading: const Icon(Icons.web),
+                    title: Text(context.l10n.caddyPresetSpa),
+                    contentPadding: EdgeInsets.zero,
+                  ),
+                ),
+                PopupMenuItem(
+                  value: 'api',
+                  child: ListTile(
+                    leading: const Icon(Icons.api),
+                    title: Text(context.l10n.caddyPresetApiGateway),
+                    contentPadding: EdgeInsets.zero,
+                  ),
+                ),
+              ],
+            ),
+            TextButton(
+              onPressed: _validateConfig,
+              child: Text(context.l10n.caddyValidate),
+            ),
+            TextButton(
+              onPressed: _saveConfig,
+              child: Text(context.l10n.caddySave),
+            ),
+            IconButton(
+              icon: const Icon(Icons.save_as),
+              tooltip: context.l10n.caddySaveConfigAs,
+              onPressed: _showSaveAsDialog,
+            ),
+            BlocBuilder<CaddyBloc, CaddyState>(
+              buildWhen: (prev, curr) =>
+                  prev.savedConfigNames != curr.savedConfigNames,
+              builder: (context, state) {
+                if (state.savedConfigNames.isEmpty) {
+                  return const SizedBox.shrink();
+                }
+                return PopupMenuButton<String>(
+                  icon: const Icon(Icons.bookmark),
+                  tooltip: context.l10n.caddySavedConfigs,
+                  onSelected: (name) {
+                    context.read<CaddyBloc>().add(CaddyLoadNamedConfig(name));
+                  },
+                  itemBuilder: (context) => state.savedConfigNames
+                      .map(
+                        (name) => PopupMenuItem(
+                          value: name,
+                          child: ListTile(
+                            leading: Icon(
+                              name == state.activeConfigName
+                                  ? Icons.bookmark
+                                  : Icons.bookmark_border,
+                            ),
+                            title: Text(name),
+                            contentPadding: EdgeInsets.zero,
+                            trailing: IconButton(
+                              icon: const Icon(Icons.delete_outline, size: 20),
+                              onPressed: () {
+                                context.read<CaddyBloc>().add(
+                                  CaddyDeleteSavedConfig(name),
+                                );
+                                Navigator.of(context).pop();
+                              },
+                            ),
+                          ),
+                        ),
+                      )
+                      .toList(),
+                );
+              },
+            ),
+            TextButton(
+              onPressed: _applyConfig,
+              child: Text(context.l10n.caddyApply),
+            ),
+          ],
+        ),
+        body: TabBarView(
+          controller: _tabController,
+          children: [
+            _SimpleConfigForm(listenController: _listenController),
+            _RawJsonEditor(controller: _rawJsonController),
+          ],
+        ),
       ),
     );
   }
