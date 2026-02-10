@@ -107,6 +107,20 @@ void main() {
       expect(decoded.containsKey('apps'), isTrue);
     });
 
+    test('toJsonString with adminEnabled includes admin listen', () {
+      const config = CaddyConfig(listenAddress: 'localhost:8080');
+      final jsonString = config.toJsonString(adminEnabled: true);
+      final decoded = jsonDecode(jsonString) as Map<String, dynamic>;
+      expect(decoded['admin']['listen'], 'localhost:2019');
+    });
+
+    test('toJsonString without admin disables admin endpoint', () {
+      const config = CaddyConfig(listenAddress: 'localhost:8080');
+      final jsonString = config.toJsonString();
+      final decoded = jsonDecode(jsonString) as Map<String, dynamic>;
+      expect(decoded['admin']['disabled'], isTrue);
+    });
+
     test('fromJson with rawJson key', () {
       final json = {'_rawJson': '{"apps":{}}'};
       final config = CaddyConfig.fromJson(json);
