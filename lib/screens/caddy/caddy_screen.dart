@@ -144,39 +144,49 @@ class _StatusCardState extends State<_StatusCard> {
         ? DateTime.now().difference(startedAt)
         : null;
 
-    return Card(
-      color: color.withValues(alpha: 0.1),
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Row(
-          children: [
-            Icon(icon, color: color, size: 40),
-            const SizedBox(width: 16),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    label,
-                    style: Theme.of(
-                      context,
-                    ).textTheme.titleMedium?.copyWith(color: color),
-                  ),
-                  if (state.isRunning)
+    final semanticLabel = [
+      label,
+      if (state.isRunning)
+        context.l10n.caddyListenAddress(state.config.listenAddress),
+      if (uptime != null) context.l10n.caddyUptime(_formatDuration(uptime)),
+    ].join('. ');
+
+    return Semantics(
+      label: semanticLabel,
+      child: Card(
+        color: color.withValues(alpha: 0.1),
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Row(
+            children: [
+              ExcludeSemantics(child: Icon(icon, color: color, size: 40)),
+              const SizedBox(width: 16),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
                     Text(
-                      context.l10n.caddyListenAddress(
-                        state.config.listenAddress,
+                      label,
+                      style: Theme.of(
+                        context,
+                      ).textTheme.titleMedium?.copyWith(color: color),
+                    ),
+                    if (state.isRunning)
+                      Text(
+                        context.l10n.caddyListenAddress(
+                          state.config.listenAddress,
+                        ),
                       ),
-                    ),
-                  if (uptime != null)
-                    Text(
-                      context.l10n.caddyUptime(_formatDuration(uptime)),
-                      style: Theme.of(context).textTheme.bodySmall,
-                    ),
-                ],
+                    if (uptime != null)
+                      Text(
+                        context.l10n.caddyUptime(_formatDuration(uptime)),
+                        style: Theme.of(context).textTheme.bodySmall,
+                      ),
+                  ],
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
@@ -230,32 +240,41 @@ class _MetricsCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              context.l10n.caddyMetrics,
-              style: Theme.of(context).textTheme.titleSmall,
-            ),
-            const SizedBox(height: 12),
-            Row(
-              children: [
-                Icon(Icons.http, color: Theme.of(context).colorScheme.primary),
-                const SizedBox(width: 8),
-                Text(context.l10n.caddyRequestsServed),
-                const Spacer(),
-                Text(
-                  context.l10n.caddyRequestCount(state.requestCount),
-                  style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                    color: Theme.of(context).colorScheme.primary,
+    return Semantics(
+      label:
+          '${context.l10n.caddyMetrics}. ${context.l10n.caddyRequestsServed}: ${state.requestCount}',
+      child: Card(
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                context.l10n.caddyMetrics,
+                style: Theme.of(context).textTheme.titleSmall,
+              ),
+              const SizedBox(height: 12),
+              Row(
+                children: [
+                  ExcludeSemantics(
+                    child: Icon(
+                      Icons.http,
+                      color: Theme.of(context).colorScheme.primary,
+                    ),
                   ),
-                ),
-              ],
-            ),
-          ],
+                  const SizedBox(width: 8),
+                  Text(context.l10n.caddyRequestsServed),
+                  const Spacer(),
+                  Text(
+                    context.l10n.caddyRequestCount(state.requestCount),
+                    style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                      color: Theme.of(context).colorScheme.primary,
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -269,22 +288,30 @@ class _ConfigSummary extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              context.l10n.caddyConfig,
-              style: Theme.of(context).textTheme.titleSmall,
-            ),
-            const SizedBox(height: 8),
-            Text(
-              '${context.l10n.caddyListenAddress('')}${state.config.listenAddress}',
-            ),
-            Text('Routes: ${state.config.routes.length}'),
-          ],
+    final semanticLabel =
+        '${context.l10n.caddyConfig}. '
+        '${context.l10n.caddyListenAddress(state.config.listenAddress)}. '
+        'Routes: ${state.config.routes.length}';
+
+    return Semantics(
+      label: semanticLabel,
+      child: Card(
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                context.l10n.caddyConfig,
+                style: Theme.of(context).textTheme.titleSmall,
+              ),
+              const SizedBox(height: 8),
+              Text(
+                '${context.l10n.caddyListenAddress('')}${state.config.listenAddress}',
+              ),
+              Text('Routes: ${state.config.routes.length}'),
+            ],
+          ),
         ),
       ),
     );
