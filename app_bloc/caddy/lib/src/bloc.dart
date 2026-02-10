@@ -35,7 +35,10 @@ class CaddyBloc extends Bloc<CaddyEvent, CaddyState> {
 
   Future<void> _onStart(CaddyStart event, Emitter<CaddyState> emit) async {
     emit(state.copyWith(status: const CaddyLoading(), config: event.config));
-    final status = await _service.start(event.config);
+    final status = await _service.start(
+      event.config,
+      adminEnabled: state.adminEnabled,
+    );
     emit(state.copyWith(status: status));
   }
 
@@ -47,7 +50,10 @@ class CaddyBloc extends Bloc<CaddyEvent, CaddyState> {
 
   Future<void> _onReload(CaddyReload event, Emitter<CaddyState> emit) async {
     emit(state.copyWith(status: const CaddyLoading(), config: event.config));
-    final status = await _service.reload(event.config);
+    final status = await _service.reload(
+      event.config,
+      adminEnabled: state.adminEnabled,
+    );
     emit(state.copyWith(status: status));
   }
 

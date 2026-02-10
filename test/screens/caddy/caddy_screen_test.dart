@@ -10,14 +10,20 @@ class MockCaddyService extends CaddyService {
   MockCaddyService() : super.forTesting();
 
   @override
-  Future<CaddyStatus> start(CaddyConfig config) async =>
+  Future<CaddyStatus> start(
+    CaddyConfig config, {
+    bool adminEnabled = false,
+  }) async =>
       CaddyRunning(config: '{}', startedAt: DateTime.now());
 
   @override
   Future<CaddyStatus> stop() async => const CaddyStopped();
 
   @override
-  Future<CaddyStatus> reload(CaddyConfig config) async =>
+  Future<CaddyStatus> reload(
+    CaddyConfig config, {
+    bool adminEnabled = false,
+  }) async =>
       CaddyRunning(config: '{}', startedAt: DateTime.now());
 
   @override

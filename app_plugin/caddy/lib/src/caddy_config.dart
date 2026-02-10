@@ -50,7 +50,19 @@ class CaddyConfig extends Equatable {
     };
   }
 
-  String toJsonString() => jsonEncode(toJson());
+  String toJsonString({bool adminEnabled = false}) {
+    final json = toJson();
+    if (adminEnabled) {
+      json['admin'] = {
+        'listen': 'localhost:2019',
+      };
+    } else {
+      json['admin'] = {
+        'disabled': true,
+      };
+    }
+    return jsonEncode(json);
+  }
 
   CaddyConfig copyWith({
     String? listenAddress,

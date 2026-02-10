@@ -40,9 +40,12 @@ class CaddyService {
     }
   }
 
-  Future<CaddyStatus> start(CaddyConfig config) async {
+  Future<CaddyStatus> start(
+    CaddyConfig config, {
+    bool adminEnabled = false,
+  }) async {
     _ensureInitialized();
-    final configJson = config.toJsonString();
+    final configJson = config.toJsonString(adminEnabled: adminEnabled);
 
     try {
       final String error;
@@ -89,9 +92,12 @@ class CaddyService {
     }
   }
 
-  Future<CaddyStatus> reload(CaddyConfig config) async {
+  Future<CaddyStatus> reload(
+    CaddyConfig config, {
+    bool adminEnabled = false,
+  }) async {
     _ensureInitialized();
-    final configJson = config.toJsonString();
+    final configJson = config.toJsonString(adminEnabled: adminEnabled);
 
     try {
       final String error;
