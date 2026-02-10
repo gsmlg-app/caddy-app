@@ -293,15 +293,15 @@ void main() {
     );
 
     blocTest<CaddyBloc, CaddyState>(
-      'Log rolling buffer caps at 500 entries',
+      'Log rolling buffer caps at 10000 entries',
       build: () => CaddyBloc(mockService),
       seed: () => CaddyState.initial().copyWith(
-        logs: List.generate(500, (i) => 'log $i'),
+        logs: List.generate(10000, (i) => 'log $i'),
       ),
       act: (bloc) => bloc.add(const CaddyLogReceived('new log')),
       expect: () => [
         isA<CaddyState>()
-            .having((s) => s.logs.length, 'logs.length', 500)
+            .having((s) => s.logs.length, 'logs.length', 10000)
             .having((s) => s.logs.last, 'logs.last', 'new log')
             .having((s) => s.logs.first, 'logs.first', 'log 1'),
       ],

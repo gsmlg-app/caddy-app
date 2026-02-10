@@ -61,7 +61,7 @@ class CaddyBloc extends Bloc<CaddyEvent, CaddyState> {
     return env;
   }
 
-  static const _maxLogs = 500;
+  static const _maxLogs = 10000;
 
   Future<void> _onStart(CaddyStart event, Emitter<CaddyState> emit) async {
     emit(state.copyWith(
