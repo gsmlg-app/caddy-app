@@ -57,6 +57,12 @@ melos run test             # Run all tests
 melos run prepare          # Full setup (bootstrap + gen-l10n + build-runner)
 ```
 
+### Documentation
+
+- **[Caddy App Guide](docs/CADDY_APP.md)** - Implementation status, architecture, and contribution guide
+- **[CLAUDE.md](CLAUDE.md)** - AI assistant guidance for this codebase
+- **[docs/](docs/)** - Full documentation index (bricks, testing, forms, etc.)
+
 ## Running the App
 
 ```bash
