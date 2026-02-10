@@ -1,0 +1,22 @@
+name: caddy_bloc
+description: BLoC state management for Caddy web server lifecycle
+version: 1.0.0
+publish_to: "none"
+
+environment:
+  sdk: ">=3.8.0 <4.0.0"
+resolution: workspace
+
+dependencies:
+  bloc: ^9.0.0
+  equatable: ^2.0.7
+  flutter:
+    sdk: flutter
+
+  caddy_service: any
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  bloc_test: ^10.0.0
+  flutter_lints: ^6.0.0
