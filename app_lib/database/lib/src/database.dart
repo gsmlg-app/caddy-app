@@ -54,7 +54,13 @@ class AppDatabase extends _$AppDatabase {
   )..where((t) => t.name.equals(name))).getSingleOrNull();
 
   Future<void> saveCaddyConfig(CaddyConfigsCompanion entry) =>
-      into(caddyConfigs).insertOnConflictUpdate(entry);
+      into(caddyConfigs).insert(
+        entry,
+        onConflict: DoUpdate(
+          (old) => entry,
+          target: [caddyConfigs.name],
+        ),
+      );
 
   Future<void> upsertCaddyConfig({
     required String name,
