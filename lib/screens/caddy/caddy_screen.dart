@@ -42,6 +42,10 @@ class CaddyScreen extends StatelessWidget {
                   _StatusCard(state: state),
                   const SizedBox(height: 16),
                   _ActionButtons(state: state),
+                  if (state.isRunning) ...[
+                    const SizedBox(height: 16),
+                    _MetricsCard(state: state),
+                  ],
                   const SizedBox(height: 16),
                   _ConfigSummary(state: state),
                   const SizedBox(height: 16),
@@ -213,6 +217,48 @@ class _ActionButtons extends StatelessWidget {
         ],
         if (state.isLoading) const CircularProgressIndicator(),
       ],
+    );
+  }
+}
+
+class _MetricsCard extends StatelessWidget {
+  const _MetricsCard({required this.state});
+
+  final CaddyState state;
+
+  @override
+  Widget build(BuildContext context) {
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              context.l10n.caddyMetrics,
+              style: Theme.of(context).textTheme.titleSmall,
+            ),
+            const SizedBox(height: 12),
+            Row(
+              children: [
+                Icon(
+                  Icons.http,
+                  color: Theme.of(context).colorScheme.primary,
+                ),
+                const SizedBox(width: 8),
+                Text(context.l10n.caddyRequestsServed),
+                const Spacer(),
+                Text(
+                  context.l10n.caddyRequestCount(state.requestCount),
+                  style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                    color: Theme.of(context).colorScheme.primary,
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
     );
   }
 }

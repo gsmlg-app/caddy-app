@@ -178,5 +178,15 @@
     }
   },
   "caddyConfigExportFailed": "Failed to export config",
+  "caddyMetrics": "Metrics",
+  "caddyRequestsServed": "Requests Served",
+  "caddyRequestCount": "{count}",
+  "@caddyRequestCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
   "@@description": "App description"
 }

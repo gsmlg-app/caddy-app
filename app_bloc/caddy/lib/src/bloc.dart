@@ -64,7 +64,11 @@ class CaddyBloc extends Bloc<CaddyEvent, CaddyState> {
   static const _maxLogs = 500;
 
   Future<void> _onStart(CaddyStart event, Emitter<CaddyState> emit) async {
-    emit(state.copyWith(status: const CaddyLoading(), config: event.config));
+    emit(state.copyWith(
+      status: const CaddyLoading(),
+      config: event.config,
+      requestCount: 0,
+    ));
     final secrets = await _readSecrets();
     final status = await _service.start(
       event.config,
@@ -108,7 +112,13 @@ class CaddyBloc extends Bloc<CaddyEvent, CaddyState> {
     if (logs.length > _maxLogs) {
       logs.removeRange(0, logs.length - _maxLogs);
     }
-    emit(state.copyWith(logs: logs));
+    // Caddy logs HTTP requests with "handled request" message
+    final isRequest = event.line.contains('"handled request"') ||
+        event.line.contains('handled request');
+    emit(state.copyWith(
+      logs: logs,
+      requestCount: isRequest ? state.requestCount + 1 : null,
+    ));
   }
 
   void _onClearLogs(CaddyClearLogs event, Emitter<CaddyState> emit) {

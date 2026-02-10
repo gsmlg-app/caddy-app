@@ -262,6 +262,37 @@ void main() {
     );
 
     blocTest<CaddyBloc, CaddyState>(
+      'CaddyLogReceived increments requestCount for handled requests',
+      build: () => CaddyBloc(mockService),
+      act: (bloc) {
+        bloc.add(const CaddyLogReceived(
+          '{"level":"info","msg":"handled request","status":200}',
+        ));
+        bloc.add(const CaddyLogReceived('INFO: some other log'));
+        bloc.add(const CaddyLogReceived(
+          '{"level":"info","msg":"handled request","status":301}',
+        ));
+      },
+      verify: (bloc) {
+        expect(bloc.state.requestCount, 2);
+        expect(bloc.state.logs, hasLength(3));
+      },
+    );
+
+    blocTest<CaddyBloc, CaddyState>(
+      'CaddyStart resets requestCount to zero',
+      build: () => CaddyBloc(mockService),
+      seed: () => CaddyState.initial().copyWith(requestCount: 42),
+      act: (bloc) => bloc.add(const CaddyStart(CaddyConfig())),
+      expect: () => [
+        isA<CaddyState>()
+            .having((s) => s.isLoading, 'isLoading', true)
+            .having((s) => s.requestCount, 'requestCount', 0),
+        isA<CaddyState>().having((s) => s.isRunning, 'isRunning', true),
+      ],
+    );
+
+    blocTest<CaddyBloc, CaddyState>(
       'Log rolling buffer caps at 500 entries',
       build: () => CaddyBloc(mockService),
       seed: () => CaddyState.initial().copyWith(

@@ -13,6 +13,7 @@ class CaddyState extends Equatable {
     this.logSearchQuery = '',
     this.savedConfigNames = const [],
     this.activeConfigName,
+    this.requestCount = 0,
   });
 
   factory CaddyState.initial() {
@@ -28,6 +29,7 @@ class CaddyState extends Equatable {
   final String logSearchQuery;
   final List<String> savedConfigNames;
   final String? activeConfigName;
+  final int requestCount;
 
   bool get isRunning => status is CaddyRunning;
   bool get isStopped => status is CaddyStopped;
@@ -65,6 +67,7 @@ class CaddyState extends Equatable {
     String? logSearchQuery,
     List<String>? savedConfigNames,
     Object? activeConfigName = _sentinel,
+    int? requestCount,
   }) {
     return CaddyState(
       status: status ?? this.status,
@@ -78,6 +81,7 @@ class CaddyState extends Equatable {
       activeConfigName: activeConfigName == _sentinel
           ? this.activeConfigName
           : activeConfigName as String?,
+      requestCount: requestCount ?? this.requestCount,
     );
   }
 
@@ -92,6 +96,7 @@ class CaddyState extends Equatable {
     logSearchQuery,
     savedConfigNames,
     activeConfigName,
+    requestCount,
   ];
 }
 
