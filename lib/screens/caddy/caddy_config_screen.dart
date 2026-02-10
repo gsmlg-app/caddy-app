@@ -611,7 +611,7 @@ class _TlsSection extends StatelessWidget {
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 16),
                   child: DropdownButtonFormField<DnsProvider>(
-                    value: tls.dnsProvider,
+                    initialValue: tls.dnsProvider,
                     decoration: InputDecoration(
                       labelText: context.l10n.caddyDnsProvider,
                       border: const OutlineInputBorder(),
