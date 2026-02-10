@@ -1,5 +1,5 @@
-name: flutter_app_template
-description: "A new Flutter project."
+name: caddy_app
+description: "A Flutter app for running and managing Caddy web server."
 publish_to: "none"
 
 version: 1.0.0+1
@@ -111,7 +111,7 @@ flutter_launcher_icons:
     generate: true
 
 melos:
-  name: flutter_app_template
+  name: caddy_app
   command:
     version:
       # Only allow versioning to happen on main branch.

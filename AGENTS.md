@@ -1,7 +1,7 @@
 # Build/Lint/Test Commands
 - Run single test: `flutter test test/widget_test.dart`
 - Run all tests: `melos run test` (dart + flutter tests) or `flutter test`
-- Lint: `melos run analyze` + `melos run format` (no lint:all command)
+- Lint: `melos run analyze` + `melos run format`
 - Format: `melos run format`
 - Analyze: `melos run analyze`
 - Build: `melos run build-runner`
@@ -9,19 +9,18 @@
 - Fix code: `melos run fix` (applies dart fix --apply)
 - Check dependencies: `melos run validate-dependencies`
 
-# Mason Bricks
-- Usage documentation for mason bricks can be found in BRICKS.md
+# Project
+- Caddy App: Flutter application for running and managing Caddy web server
+- Monorepo managed by Melos with workspace packages in pubspec.yaml
 
 # Code Style Guidelines
 - Use flutter_lints from analysis_options.yaml
 - Import order: dart, package, local (standard Dart convention)
-- Use single quotes for strings (prefer_single_quotes rule available)
 - Prefer const constructors for performance
-- Use BLoC pattern for state management (flutter_bloc in dependencies)
-- Error handling: try/catch with logging (use app_logging package in app_lib/logging)
+- Use BLoC pattern for state management (flutter_bloc)
+- Error handling: try/catch with logging (use app_logging package)
 - Naming: PascalCase for classes, camelCase for variables
 - Types: always specify return types and parameter types
-- Workspace structure: multi-package with melos, use workspace packages
 
 # Package Management
 - This project uses Melos for mono-repo management
@@ -31,4 +30,3 @@
 # Additional Notes
 - Generated files (*.g.dart, *.freezed.dart) are excluded from analysis
 - Localization: use `melos run gen-l10n` to generate from ARB files
-- Brick testing: use `melos run brick-test` for Mason template tests

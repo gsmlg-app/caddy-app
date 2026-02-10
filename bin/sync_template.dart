@@ -21,7 +21,7 @@ import 'dart:io';
 ///   --skip-scripts     Skip syncing bin scripts
 ///   --skip-third-party Skip syncing third_party packages
 void main(List<String> args) async {
-  const templateName = 'flutter_app_template';
+  const templateName = 'caddy_app';
   const templateRepo = 'https://github.com/gsmlg-app/flutter-app-template.git';
   const tempDir = '.template-sync';
 

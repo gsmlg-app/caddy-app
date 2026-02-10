@@ -5,7 +5,7 @@ let
   pkgs-unstable = import inputs.nixpkgs-unstable { system = pkgs.stdenv.system; };
 in
 {
-  env.GREET = "Flutter APP Template";
+  env.GREET = "Caddy App";
 
   packages = [
     pkgs-stable.git

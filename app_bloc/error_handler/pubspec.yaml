@@ -1,5 +1,5 @@
 name: error_handler_bloc
-description: Error handling and management BLoC for the Flutter app template
+description: Error handling and management BLoC for Caddy App
 publish_to: "none"
 
 version: 1.0.0+1

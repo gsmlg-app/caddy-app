@@ -1,6 +1,6 @@
 # Mason Brick Testing Guide
 
-This guide explains how to test Mason bricks in the Flutter App Template project.
+This guide explains how to test Mason bricks in the Caddy App project.
 
 ## Overview
 

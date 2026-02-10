@@ -1,9 +1,9 @@
 import 'package:app_adaptive_widgets/app_adaptive_widgets.dart';
 import 'package:app_locale/app_locale.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_app_template/destination.dart';
-import 'package:flutter_app_template/screens/settings/settings_screen.dart';
-import 'package:flutter_app_template/screens/settings/widgets/gamepad_visualizer.dart';
+import 'package:caddy_app/destination.dart';
+import 'package:caddy_app/screens/settings/settings_screen.dart';
+import 'package:caddy_app/screens/settings/widgets/gamepad_visualizer.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:gamepad_bloc/gamepad_bloc.dart';
 import 'package:settings_ui/settings_ui.dart';

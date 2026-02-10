@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_app_template/screens/app/error_screen.dart';
+import 'package:caddy_app/screens/app/error_screen.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 import 'package:app_locale/app_locale.dart';

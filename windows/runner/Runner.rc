@@ -90,12 +90,12 @@ BEGIN
         BLOCK "040904e4"
         BEGIN
             VALUE "CompanyName", "app.gsmlg" "\0"
-            VALUE "FileDescription", "flutter_app_template" "\0"
+            VALUE "FileDescription", "caddy_app" "\0"
             VALUE "FileVersion", VERSION_AS_STRING "\0"
-            VALUE "InternalName", "flutter_app_template" "\0"
+            VALUE "InternalName", "caddy_app" "\0"
             VALUE "LegalCopyright", "Copyright (C) 2025 app.gsmlg. All rights reserved." "\0"
-            VALUE "OriginalFilename", "flutter_app_template.exe" "\0"
-            VALUE "ProductName", "flutter_app_template" "\0"
+            VALUE "OriginalFilename", "caddy_app.exe" "\0"
+            VALUE "ProductName", "caddy_app" "\0"
             VALUE "ProductVersion", VERSION_AS_STRING "\0"
         END
     END

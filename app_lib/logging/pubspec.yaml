@@ -1,5 +1,5 @@
 name: app_logging
-description: Centralized logging and error handling for the Flutter app template
+description: Centralized logging and error handling for Caddy App
 publish_to: "none"
 
 version: 1.0.0+1

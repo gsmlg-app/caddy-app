@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-Flutter monorepo template with modular architecture, BLoC state management, and comprehensive tooling. Follows clean architecture principles with separation of concerns across specialized packages.
+Caddy App - A Flutter application for running and managing Caddy web server. Built with modular monorepo architecture, BLoC state management, and multi-platform support.
 
 **Requirements**: Flutter SDK >=3.8.0, Dart >=3.8.0
 

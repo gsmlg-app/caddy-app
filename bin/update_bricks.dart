@@ -6,13 +6,13 @@ import 'dart:io';
 /// Script to update mason bricks from the flutter-app-template repository.
 ///
 /// This script:
-/// 1. Verifies the project has been renamed (not still flutter_app_template)
+/// 1. Verifies the project has been renamed (not still caddy_app)
 /// 2. Clones/fetches the template repository
 /// 3. Syncs the bricks/ directory to the current project
 ///
 /// Usage: dart run bin/update_bricks.dart [--force]
 void main(List<String> args) async {
-  const templateName = 'flutter_app_template';
+  const templateName = 'caddy_app';
   const templateRepo = 'https://github.com/gsmlg-app/flutter-app-template.git';
   const tempDir = '.template-sync';
 

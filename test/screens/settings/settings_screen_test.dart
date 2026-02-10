@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_app_template/screens/settings/settings_screen.dart';
+import 'package:caddy_app/screens/settings/settings_screen.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:theme_bloc/theme_bloc.dart';

@@ -1,6 +1,6 @@
 # Documentation Index
 
-This directory contains detailed documentation for the Flutter App Template project.
+This directory contains detailed documentation for the Caddy App project.
 
 ## Quick Links
 

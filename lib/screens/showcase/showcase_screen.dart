@@ -1,14 +1,14 @@
 import 'package:app_adaptive_widgets/app_adaptive_widgets.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_app_template/destination.dart';
-import 'package:flutter_app_template/screens/showcase/adaptive_demo_screen.dart';
-import 'package:flutter_app_template/screens/showcase/artwork_demo_screen.dart';
-import 'package:flutter_app_template/screens/showcase/chart_demo_screen.dart';
-import 'package:flutter_app_template/screens/showcase/client_info_screen.dart';
-import 'package:flutter_app_template/screens/showcase/feedback_demo_screen.dart';
-import 'package:flutter_app_template/screens/showcase/form_demo_screen.dart';
-import 'package:flutter_app_template/screens/showcase/vault_demo_screen.dart';
-import 'package:flutter_app_template/screens/showcase/webview_demo_screen.dart';
+import 'package:caddy_app/destination.dart';
+import 'package:caddy_app/screens/showcase/adaptive_demo_screen.dart';
+import 'package:caddy_app/screens/showcase/artwork_demo_screen.dart';
+import 'package:caddy_app/screens/showcase/chart_demo_screen.dart';
+import 'package:caddy_app/screens/showcase/client_info_screen.dart';
+import 'package:caddy_app/screens/showcase/feedback_demo_screen.dart';
+import 'package:caddy_app/screens/showcase/form_demo_screen.dart';
+import 'package:caddy_app/screens/showcase/vault_demo_screen.dart';
+import 'package:caddy_app/screens/showcase/webview_demo_screen.dart';
 import 'package:go_router/go_router.dart';
 
 class ShowcaseScreen extends StatelessWidget {

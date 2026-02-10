@@ -2,8 +2,8 @@ import 'package:app_adaptive_widgets/app_adaptive_widgets.dart';
 import 'package:app_secure_storage/app_secure_storage.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:flutter_app_template/destination.dart';
-import 'package:flutter_app_template/screens/showcase/showcase_screen.dart';
+import 'package:caddy_app/destination.dart';
+import 'package:caddy_app/screens/showcase/showcase_screen.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 class VaultDemoScreen extends StatefulWidget {

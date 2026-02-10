@@ -1,9 +1,9 @@
 {
   "@@locale": "en",
-  "appName": "Flutter App Template",
+  "appName": "Caddy App",
   "errorOccurred": "Error Occurred",
   "backToHome": "Back to Home",
-  "welcomeHome": "Welcome to my app",
+  "welcomeHome": "Welcome to Caddy App",
   "ok": "OK",
   "cancel": "Cancel",
   "loading": "Loading",

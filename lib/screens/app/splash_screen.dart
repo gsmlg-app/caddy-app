@@ -2,7 +2,7 @@ import 'dart:async';
 
 import 'package:app_artwork/logo/gsmlg_dev.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_app_template/screens/home/home_screen.dart';
+import 'package:caddy_app/screens/home/home_screen.dart';
 import 'package:go_router/go_router.dart';
 
 class SplashScreen extends StatelessWidget {

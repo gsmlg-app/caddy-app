@@ -1,6 +1,6 @@
 import 'package:app_locale/app_locale.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_app_template/screens/app/splash_screen.dart';
+import 'package:caddy_app/screens/app/splash_screen.dart';
 import 'package:go_router/go_router.dart';
 
 class ErrorScreen extends StatelessWidget {

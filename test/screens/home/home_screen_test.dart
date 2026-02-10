@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_app_template/screens/home/home_screen.dart';
+import 'package:caddy_app/screens/home/home_screen.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:app_locale/app_locale.dart';
 import 'package:app_adaptive_widgets/app_adaptive_widgets.dart';

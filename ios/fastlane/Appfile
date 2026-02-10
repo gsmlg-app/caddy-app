@@ -1,4 +1,4 @@
-app_identifier("app.gsmlg.flutterapptemplate")
+app_identifier("app.gsmlg.caddyapp")
 apple_id(ENV["APPLE_ID"])
 itc_team_id(ENV["ITC_TEAM_ID"])
 team_id("S9A97JZ7MQ")

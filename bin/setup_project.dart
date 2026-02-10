@@ -7,12 +7,12 @@ import 'dart:io';
 ///
 /// This script:
 /// 1. Prompts for a new project name
-/// 2. Renames all references from 'flutter_app_template' to the new name
+/// 2. Renames all references from 'caddy_app' to the new name
 /// 3. Removes test_bricks/ directory (only needed for template development)
 ///
 /// Usage: dart run bin/setup_project.dart [project_name]
 void main(List<String> args) async {
-  const templateName = 'flutter_app_template';
+  const templateName = 'caddy_app';
 
   // Get current project name from pubspec.yaml
   final pubspecFile = File('pubspec.yaml');
@@ -74,7 +74,7 @@ void main(List<String> args) async {
     'GEMINI.md',
     'AGENTS.md',
     '.metadata',
-    'melos_flutter_app_template.iml',
+    'melos_caddy_app.iml',
   ];
 
   // Update files with template name references

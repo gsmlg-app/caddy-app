@@ -43,8 +43,8 @@ platform :ios do
       use_automatic_signing: false,
       path: "Runner.xcodeproj",
       team_id: CredentialsManager::AppfileConfig.try_fetch_value(:team_id),
-      bundle_identifier: "app.gsmlg.flutterapptemplate",
-      profile_name: ENV["sigh_app.gsmlg.flutterapptemplate_appstore_profile-name"] || "match AppStore app.gsmlg.flutterapptemplate",
+      bundle_identifier: "app.gsmlg.caddyapp",
+      profile_name: ENV["sigh_app.gsmlg.caddyapp_appstore_profile-name"] || "match AppStore app.gsmlg.caddyapp",
       code_sign_identity: "iPhone Distribution"
     )
 
@@ -62,7 +62,7 @@ platform :ios do
       output_name: "app.ipa",
       export_options: {
         provisioningProfiles: {
-          "app.gsmlg.flutterapptemplate" => ENV["sigh_app.gsmlg.flutterapptemplate_appstore_profile-name"] || "match AppStore app.gsmlg.flutterapptemplate"
+          "app.gsmlg.caddyapp" => ENV["sigh_app.gsmlg.caddyapp_appstore_profile-name"] || "match AppStore app.gsmlg.caddyapp"
         }
       }
     )
