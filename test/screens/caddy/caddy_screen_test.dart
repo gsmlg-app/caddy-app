@@ -69,5 +69,28 @@ void main() {
 
       expect(find.byIcon(Icons.play_arrow), findsOneWidget);
     });
+
+    testWidgets('shows metrics card when running', (tester) async {
+      final service = MockCaddyService();
+      final bloc = CaddyBloc(service);
+      bloc.emit(CaddyState.initial().copyWith(
+        status: CaddyRunning(config: '{}', startedAt: DateTime.now()),
+        requestCount: 5,
+      ));
+      await tester.pumpWidget(_buildTestWidget(bloc: bloc));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Metrics'), findsOneWidget);
+      expect(find.text('Requests Served'), findsOneWidget);
+      expect(find.text('5'), findsOneWidget);
+      bloc.close();
+    });
+
+    testWidgets('does not show metrics card when stopped', (tester) async {
+      await tester.pumpWidget(_buildTestWidget());
+      await tester.pumpAndSettle();
+
+      expect(find.text('Metrics'), findsNothing);
+    });
   });
 }
