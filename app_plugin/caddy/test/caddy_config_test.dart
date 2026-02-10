@@ -331,11 +331,304 @@ void main() {
         CaddyConfigPresets.reverseProxy(),
         CaddyConfigPresets.spaServer(),
         CaddyConfigPresets.apiGateway(),
+        CaddyConfigPresets.httpsWithDns(),
       ];
 
       for (final preset in presets) {
         expect(CaddyConfigPresets.validate(preset), isNull);
       }
+    });
+
+    test('httpsWithDns creates config with TLS enabled', () {
+      final config = CaddyConfigPresets.httpsWithDns();
+      expect(config.tls.enabled, isTrue);
+      expect(config.tls.domain, 'example.com');
+      expect(config.tls.dnsProvider, DnsProvider.cloudflare);
+      expect(config.listenAddress, ':443');
+    });
+  });
+
+  group('CaddyTlsConfig', () {
+    test('default values', () {
+      const tls = CaddyTlsConfig();
+      expect(tls.enabled, isFalse);
+      expect(tls.domain, isEmpty);
+      expect(tls.dnsProvider, DnsProvider.none);
+    });
+
+    test('fromJson creates config correctly', () {
+      final tls = CaddyTlsConfig.fromJson({
+        'enabled': true,
+        'domain': 'example.com',
+        'dnsProvider': 'cloudflare',
+      });
+      expect(tls.enabled, isTrue);
+      expect(tls.domain, 'example.com');
+      expect(tls.dnsProvider, DnsProvider.cloudflare);
+    });
+
+    test('fromJson with unknown provider defaults to none', () {
+      final tls = CaddyTlsConfig.fromJson({
+        'enabled': true,
+        'dnsProvider': 'unknown_provider',
+      });
+      expect(tls.dnsProvider, DnsProvider.none);
+    });
+
+    test('toJson round-trips correctly', () {
+      const original = CaddyTlsConfig(
+        enabled: true,
+        domain: 'test.com',
+        dnsProvider: DnsProvider.route53,
+      );
+      final restored = CaddyTlsConfig.fromJson(original.toJson());
+      expect(restored, equals(original));
+    });
+
+    test('copyWith preserves unchanged fields', () {
+      const tls = CaddyTlsConfig(
+        enabled: true,
+        domain: 'test.com',
+        dnsProvider: DnsProvider.cloudflare,
+      );
+      final updated = tls.copyWith(domain: 'new.com');
+      expect(updated.enabled, isTrue);
+      expect(updated.domain, 'new.com');
+      expect(updated.dnsProvider, DnsProvider.cloudflare);
+    });
+  });
+
+  group('CaddyStorageConfig', () {
+    test('default values', () {
+      const s3 = CaddyStorageConfig();
+      expect(s3.enabled, isFalse);
+      expect(s3.endpoint, isEmpty);
+      expect(s3.bucket, isEmpty);
+      expect(s3.region, isEmpty);
+      expect(s3.prefix, 'caddy/');
+    });
+
+    test('fromJson creates config correctly', () {
+      final s3 = CaddyStorageConfig.fromJson({
+        'enabled': true,
+        'endpoint': 's3.amazonaws.com',
+        'bucket': 'my-bucket',
+        'region': 'us-east-1',
+        'prefix': 'certs/',
+      });
+      expect(s3.enabled, isTrue);
+      expect(s3.endpoint, 's3.amazonaws.com');
+      expect(s3.bucket, 'my-bucket');
+      expect(s3.region, 'us-east-1');
+      expect(s3.prefix, 'certs/');
+    });
+
+    test('toJson round-trips correctly', () {
+      const original = CaddyStorageConfig(
+        enabled: true,
+        endpoint: 's3.eu-west-1.amazonaws.com',
+        bucket: 'test-bucket',
+        region: 'eu-west-1',
+        prefix: 'caddy/',
+      );
+      final restored = CaddyStorageConfig.fromJson(original.toJson());
+      expect(restored, equals(original));
+    });
+
+    test('copyWith preserves unchanged fields', () {
+      const s3 = CaddyStorageConfig(
+        enabled: true,
+        bucket: 'bucket',
+        region: 'us-east-1',
+      );
+      final updated = s3.copyWith(bucket: 'new-bucket');
+      expect(updated.enabled, isTrue);
+      expect(updated.bucket, 'new-bucket');
+      expect(updated.region, 'us-east-1');
+    });
+  });
+
+  group('CaddyConfig TLS/S3 integration', () {
+    test('toJson includes TLS automation when enabled with DNS provider', () {
+      const config = CaddyConfig(
+        listenAddress: ':443',
+        tls: CaddyTlsConfig(
+          enabled: true,
+          domain: 'example.com',
+          dnsProvider: DnsProvider.cloudflare,
+        ),
+      );
+
+      final json = config.toJson();
+      final tls = json['apps']['tls'] as Map<String, dynamic>;
+      expect(tls, isNotNull);
+      final policies = tls['automation']['policies'] as List;
+      expect(policies, hasLength(1));
+      final policy = policies.first as Map<String, dynamic>;
+      expect(policy['subjects'], ['example.com']);
+      final issuer =
+          (policy['issuers'] as List).first as Map<String, dynamic>;
+      expect(issuer['module'], 'acme');
+      final provider = issuer['challenges']['dns']['provider']
+          as Map<String, dynamic>;
+      expect(provider['name'], 'cloudflare');
+      expect(provider['api_token'], '{env.CF_API_TOKEN}');
+    });
+
+    test('toJson includes Route53 credentials for route53 provider', () {
+      const config = CaddyConfig(
+        listenAddress: ':443',
+        tls: CaddyTlsConfig(
+          enabled: true,
+          dnsProvider: DnsProvider.route53,
+        ),
+      );
+
+      final json = config.toJson();
+      final policies =
+          json['apps']['tls']['automation']['policies'] as List;
+      final issuer = (policies.first as Map)['issuers'][0] as Map;
+      final provider = issuer['challenges']['dns']['provider'] as Map;
+      expect(provider['name'], 'route53');
+      expect(provider['access_key_id'], '{env.AWS_ACCESS_KEY_ID}');
+      expect(
+        provider['secret_access_key'],
+        '{env.AWS_SECRET_ACCESS_KEY}',
+      );
+    });
+
+    test('toJson includes DuckDNS token for duckdns provider', () {
+      const config = CaddyConfig(
+        listenAddress: ':443',
+        tls: CaddyTlsConfig(
+          enabled: true,
+          dnsProvider: DnsProvider.duckdns,
+        ),
+      );
+
+      final json = config.toJson();
+      final policies =
+          json['apps']['tls']['automation']['policies'] as List;
+      final issuer = (policies.first as Map)['issuers'][0] as Map;
+      final provider = issuer['challenges']['dns']['provider'] as Map;
+      expect(provider['name'], 'duckdns');
+      expect(provider['api_token'], '{env.DUCKDNS_TOKEN}');
+    });
+
+    test('toJson excludes TLS when disabled', () {
+      const config = CaddyConfig(
+        listenAddress: ':443',
+        tls: CaddyTlsConfig(enabled: false),
+      );
+
+      final json = config.toJson();
+      expect((json['apps'] as Map).containsKey('tls'), isFalse);
+    });
+
+    test('toJson excludes TLS when provider is none', () {
+      const config = CaddyConfig(
+        listenAddress: ':443',
+        tls: CaddyTlsConfig(
+          enabled: true,
+          dnsProvider: DnsProvider.none,
+        ),
+      );
+
+      final json = config.toJson();
+      expect((json['apps'] as Map).containsKey('tls'), isFalse);
+    });
+
+    test('toJson includes S3 storage when enabled', () {
+      const config = CaddyConfig(
+        listenAddress: 'localhost:8080',
+        storage: CaddyStorageConfig(
+          enabled: true,
+          endpoint: 's3.amazonaws.com',
+          bucket: 'my-bucket',
+          region: 'us-east-1',
+          prefix: 'caddy/',
+        ),
+      );
+
+      final json = config.toJson();
+      final storage = json['storage'] as Map<String, dynamic>;
+      expect(storage['module'], 's3');
+      expect(storage['host'], 's3.amazonaws.com');
+      expect(storage['bucket'], 'my-bucket');
+      expect(storage['region'], 'us-east-1');
+      expect(storage['prefix'], 'caddy/');
+    });
+
+    test('toJson excludes S3 storage when disabled', () {
+      const config = CaddyConfig(
+        listenAddress: 'localhost:8080',
+        storage: CaddyStorageConfig(enabled: false, bucket: 'bucket'),
+      );
+
+      final json = config.toJson();
+      expect(json.containsKey('storage'), isFalse);
+    });
+
+    test('toJson excludes S3 storage when bucket is empty', () {
+      const config = CaddyConfig(
+        listenAddress: 'localhost:8080',
+        storage: CaddyStorageConfig(enabled: true),
+      );
+
+      final json = config.toJson();
+      expect(json.containsKey('storage'), isFalse);
+    });
+
+    test('toStorageJson includes TLS and storage', () {
+      const config = CaddyConfig(
+        listenAddress: 'localhost:8080',
+        tls: CaddyTlsConfig(
+          enabled: true,
+          domain: 'test.com',
+          dnsProvider: DnsProvider.cloudflare,
+        ),
+        storage: CaddyStorageConfig(
+          enabled: true,
+          bucket: 'test-bucket',
+        ),
+      );
+
+      final json = config.toStorageJson();
+      expect(json.containsKey('tls'), isTrue);
+      expect(json.containsKey('storage'), isTrue);
+      expect(json['tls']['enabled'], isTrue);
+      expect(json['storage']['enabled'], isTrue);
+    });
+
+    test('fromJson restores TLS and storage', () {
+      const original = CaddyConfig(
+        listenAddress: 'localhost:8080',
+        tls: CaddyTlsConfig(
+          enabled: true,
+          domain: 'test.com',
+          dnsProvider: DnsProvider.route53,
+        ),
+        storage: CaddyStorageConfig(
+          enabled: true,
+          endpoint: 's3.example.com',
+          bucket: 'bucket',
+          region: 'eu-west-1',
+        ),
+      );
+
+      final restored = CaddyConfig.fromJson(original.toStorageJson());
+      expect(restored.tls, equals(original.tls));
+      expect(restored.storage, equals(original.storage));
+    });
+
+    test('equatable includes TLS and storage in comparison', () {
+      const config1 = CaddyConfig(
+        tls: CaddyTlsConfig(enabled: true),
+      );
+      const config2 = CaddyConfig(
+        tls: CaddyTlsConfig(enabled: false),
+      );
+      expect(config1, isNot(equals(config2)));
     });
   });
 }

@@ -45,6 +45,8 @@ class _CaddyConfigScreenState extends State<CaddyConfigScreen>
       return CaddyConfig(
         listenAddress: _listenController.text,
         routes: bloc.state.config.routes,
+        tls: bloc.state.config.tls,
+        storage: bloc.state.config.storage,
       );
     } else {
       return CaddyConfig(rawJson: _rawJsonController.text);
@@ -177,6 +179,7 @@ class _CaddyConfigScreenState extends State<CaddyConfigScreen>
                   'proxy' => CaddyConfigPresets.reverseProxy(),
                   'spa' => CaddyConfigPresets.spaServer(),
                   'api' => CaddyConfigPresets.apiGateway(),
+                  'https' => CaddyConfigPresets.httpsWithDns(),
                   _ => null,
                 };
                 if (preset != null) _loadPreset(preset);
@@ -211,6 +214,14 @@ class _CaddyConfigScreenState extends State<CaddyConfigScreen>
                   child: ListTile(
                     leading: const Icon(Icons.api),
                     title: Text(context.l10n.caddyPresetApiGateway),
+                    contentPadding: EdgeInsets.zero,
+                  ),
+                ),
+                PopupMenuItem(
+                  value: 'https',
+                  child: ListTile(
+                    leading: const Icon(Icons.lock),
+                    title: Text(context.l10n.caddyTlsSettings),
                     contentPadding: EdgeInsets.zero,
                   ),
                 ),
@@ -357,6 +368,10 @@ class _SimpleConfigForm extends StatelessWidget {
                 ),
               ),
             ),
+            const SizedBox(height: 24),
+            _TlsSection(config: state.config),
+            const SizedBox(height: 24),
+            _S3StorageSection(config: state.config),
           ],
         );
       },
@@ -473,6 +488,236 @@ class _RawJsonEditor extends StatelessWidget {
           alignLabelWithHint: true,
         ),
       ),
+    );
+  }
+}
+
+class _TlsSection extends StatelessWidget {
+  const _TlsSection({required this.config});
+
+  final CaddyConfig config;
+
+  @override
+  Widget build(BuildContext context) {
+    final tls = config.tls;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          context.l10n.caddyTlsSettings,
+          style: Theme.of(context).textTheme.titleSmall,
+        ),
+        const SizedBox(height: 8),
+        Card(
+          child: Column(
+            children: [
+              SwitchListTile(
+                title: Text(context.l10n.caddyTlsEnabled),
+                secondary: Icon(
+                  Icons.lock,
+                  color: tls.enabled
+                      ? Theme.of(context).colorScheme.primary
+                      : null,
+                ),
+                value: tls.enabled,
+                onChanged: (value) {
+                  context.read<CaddyBloc>().add(
+                    CaddyUpdateConfig(
+                      config.copyWith(tls: tls.copyWith(enabled: value)),
+                    ),
+                  );
+                },
+              ),
+              if (tls.enabled) ...[
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  child: TextField(
+                    decoration: InputDecoration(
+                      labelText: context.l10n.caddyTlsDomain,
+                      hintText: 'example.com',
+                      border: const OutlineInputBorder(),
+                    ),
+                    controller: TextEditingController(text: tls.domain),
+                    onChanged: (value) {
+                      context.read<CaddyBloc>().add(
+                        CaddyUpdateConfig(
+                          config.copyWith(tls: tls.copyWith(domain: value)),
+                        ),
+                      );
+                    },
+                  ),
+                ),
+                const SizedBox(height: 12),
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  child: DropdownButtonFormField<DnsProvider>(
+                    value: tls.dnsProvider,
+                    decoration: InputDecoration(
+                      labelText: context.l10n.caddyDnsProvider,
+                      border: const OutlineInputBorder(),
+                    ),
+                    items: [
+                      DropdownMenuItem(
+                        value: DnsProvider.none,
+                        child: Text(context.l10n.caddyDnsProviderNone),
+                      ),
+                      DropdownMenuItem(
+                        value: DnsProvider.cloudflare,
+                        child: Text(context.l10n.caddyDnsProviderCloudflare),
+                      ),
+                      DropdownMenuItem(
+                        value: DnsProvider.route53,
+                        child: Text(context.l10n.caddyDnsProviderRoute53),
+                      ),
+                      DropdownMenuItem(
+                        value: DnsProvider.duckdns,
+                        child: Text(context.l10n.caddyDnsProviderDuckdns),
+                      ),
+                    ],
+                    onChanged: (value) {
+                      if (value == null) return;
+                      context.read<CaddyBloc>().add(
+                        CaddyUpdateConfig(
+                          config.copyWith(
+                            tls: tls.copyWith(dnsProvider: value),
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+                ),
+                const SizedBox(height: 16),
+              ],
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _S3StorageSection extends StatelessWidget {
+  const _S3StorageSection({required this.config});
+
+  final CaddyConfig config;
+
+  @override
+  Widget build(BuildContext context) {
+    final s3 = config.storage;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          context.l10n.caddyS3Storage,
+          style: Theme.of(context).textTheme.titleSmall,
+        ),
+        const SizedBox(height: 8),
+        Card(
+          child: Column(
+            children: [
+              SwitchListTile(
+                title: Text(context.l10n.caddyS3Enabled),
+                secondary: Icon(
+                  Icons.cloud,
+                  color: s3.enabled
+                      ? Theme.of(context).colorScheme.primary
+                      : null,
+                ),
+                value: s3.enabled,
+                onChanged: (value) {
+                  context.read<CaddyBloc>().add(
+                    CaddyUpdateConfig(
+                      config.copyWith(storage: s3.copyWith(enabled: value)),
+                    ),
+                  );
+                },
+              ),
+              if (s3.enabled) ...[
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  child: TextField(
+                    decoration: InputDecoration(
+                      labelText: context.l10n.caddyS3Endpoint,
+                      hintText: 's3.amazonaws.com',
+                      border: const OutlineInputBorder(),
+                    ),
+                    controller: TextEditingController(text: s3.endpoint),
+                    onChanged: (value) {
+                      context.read<CaddyBloc>().add(
+                        CaddyUpdateConfig(
+                          config.copyWith(
+                            storage: s3.copyWith(endpoint: value),
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+                ),
+                const SizedBox(height: 12),
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  child: TextField(
+                    decoration: InputDecoration(
+                      labelText: context.l10n.caddyS3Bucket,
+                      hintText: 'my-caddy-storage',
+                      border: const OutlineInputBorder(),
+                    ),
+                    controller: TextEditingController(text: s3.bucket),
+                    onChanged: (value) {
+                      context.read<CaddyBloc>().add(
+                        CaddyUpdateConfig(
+                          config.copyWith(storage: s3.copyWith(bucket: value)),
+                        ),
+                      );
+                    },
+                  ),
+                ),
+                const SizedBox(height: 12),
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  child: TextField(
+                    decoration: InputDecoration(
+                      labelText: context.l10n.caddyS3Region,
+                      hintText: 'us-east-1',
+                      border: const OutlineInputBorder(),
+                    ),
+                    controller: TextEditingController(text: s3.region),
+                    onChanged: (value) {
+                      context.read<CaddyBloc>().add(
+                        CaddyUpdateConfig(
+                          config.copyWith(storage: s3.copyWith(region: value)),
+                        ),
+                      );
+                    },
+                  ),
+                ),
+                const SizedBox(height: 12),
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  child: TextField(
+                    decoration: InputDecoration(
+                      labelText: context.l10n.caddyS3Prefix,
+                      hintText: 'caddy/',
+                      border: const OutlineInputBorder(),
+                    ),
+                    controller: TextEditingController(text: s3.prefix),
+                    onChanged: (value) {
+                      context.read<CaddyBloc>().add(
+                        CaddyUpdateConfig(
+                          config.copyWith(storage: s3.copyWith(prefix: value)),
+                        ),
+                      );
+                    },
+                  ),
+                ),
+                const SizedBox(height: 16),
+              ],
+            ],
+          ),
+        ),
+      ],
     );
   }
 }
