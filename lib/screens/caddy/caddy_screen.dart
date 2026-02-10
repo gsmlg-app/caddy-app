@@ -11,6 +11,7 @@ import 'package:go_router/go_router.dart';
 import 'package:caddy_app/destination.dart';
 import 'package:caddy_app/screens/caddy/caddy_config_screen.dart';
 import 'package:caddy_app/screens/caddy/caddy_log_screen.dart';
+import 'package:caddy_app/screens/caddy/caddy_secrets_screen.dart';
 
 class CaddyScreen extends StatelessWidget {
   static const name = 'Caddy';
@@ -298,6 +299,12 @@ class _NavigationLinks extends StatelessWidget {
             child: const Icon(Icons.chevron_right),
           ),
           onTap: () => context.goNamed(CaddyLogScreen.name),
+        ),
+        ListTile(
+          leading: const Icon(Icons.key),
+          title: Text(context.l10n.caddySecrets),
+          trailing: const Icon(Icons.chevron_right),
+          onTap: () => context.goNamed(CaddySecretsScreen.name),
         ),
       ],
     );

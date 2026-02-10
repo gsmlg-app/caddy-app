@@ -4,6 +4,7 @@ import 'package:caddy_app/screens/app/splash_screen.dart';
 import 'package:caddy_app/screens/caddy/caddy_config_screen.dart';
 import 'package:caddy_app/screens/caddy/caddy_log_screen.dart';
 import 'package:caddy_app/screens/caddy/caddy_screen.dart';
+import 'package:caddy_app/screens/caddy/caddy_secrets_screen.dart';
 import 'package:caddy_app/screens/home/home_screen.dart';
 import 'package:caddy_app/screens/settings/accent_color_settings_screen.dart';
 import 'package:caddy_app/screens/settings/app_settings_screen.dart';
@@ -89,6 +90,17 @@ class AppRouter {
               key: state.pageKey,
               restorationId: state.pageKey.value,
               child: const CaddyLogScreen(),
+            );
+          },
+        ),
+        GoRoute(
+          name: CaddySecretsScreen.name,
+          path: CaddySecretsScreen.path,
+          pageBuilder: (context, state) {
+            return NoTransitionPage<void>(
+              key: state.pageKey,
+              restorationId: state.pageKey.value,
+              child: const CaddySecretsScreen(),
             );
           },
         ),
