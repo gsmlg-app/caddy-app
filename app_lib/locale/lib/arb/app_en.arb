@@ -69,5 +69,53 @@
       }
     }
   },
+  "caddyUptime": "Uptime: {duration}",
+  "@caddyUptime": {
+    "placeholders": {
+      "duration": {
+        "type": "String"
+      }
+    }
+  },
+  "caddyDashboard": "Dashboard",
+  "caddyAdminApi": "Admin API",
+  "caddyAdminApiEnabled": "Admin API enabled at {url}",
+  "@caddyAdminApiEnabled": {
+    "placeholders": {
+      "url": {
+        "type": "String"
+      }
+    }
+  },
+  "caddyAdminApiDisabled": "Admin API disabled",
+  "caddyConfigPresets": "Presets",
+  "caddyPresetStaticFile": "Static File Server",
+  "caddyPresetReverseProxy": "Reverse Proxy",
+  "caddyPresetSpa": "SPA Server",
+  "caddyPresetApiGateway": "API Gateway",
+  "caddyConfigValid": "Configuration is valid",
+  "caddyConfigInvalid": "Invalid configuration: {error}",
+  "@caddyConfigInvalid": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "caddyValidate": "Validate",
+  "caddyLogFilter": "Filter",
+  "caddyLogSearch": "Search logs",
+  "caddyLogLevelAll": "All",
+  "caddyLogLevelInfo": "INFO",
+  "caddyLogLevelWarn": "WARN",
+  "caddyLogLevelError": "ERROR",
+  "caddyLogLevelDebug": "DEBUG",
+  "caddyAddRoute": "Add Route",
+  "caddyRoutePath": "Route Path",
+  "caddyRouteType": "Route Type",
+  "caddyStaticFiles": "Static Files",
+  "caddyReverseProxy": "Reverse Proxy",
+  "caddyFileRoot": "File Root Directory",
+  "caddyUpstreamAddress": "Upstream Address",
   "@@description": "App description"
 }

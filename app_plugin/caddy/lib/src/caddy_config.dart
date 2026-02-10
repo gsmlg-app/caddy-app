@@ -143,3 +143,118 @@ final class ReverseProxyHandler extends CaddyHandler {
   @override
   List<Object?> get props => [upstreams];
 }
+
+class CaddyConfigPresets {
+  CaddyConfigPresets._();
+
+  static CaddyConfig staticFileServer({
+    String listenAddress = 'localhost:8080',
+    String root = '/var/www/html',
+  }) {
+    return CaddyConfig(
+      listenAddress: listenAddress,
+      routes: [
+        CaddyRoute(
+          path: '/*',
+          handler: StaticFileHandler(root: root),
+        ),
+      ],
+    );
+  }
+
+  static CaddyConfig reverseProxy({
+    String listenAddress = 'localhost:8080',
+    String upstream = 'localhost:3000',
+  }) {
+    return CaddyConfig(
+      listenAddress: listenAddress,
+      routes: [
+        CaddyRoute(
+          path: '/*',
+          handler: ReverseProxyHandler(upstreams: [upstream]),
+        ),
+      ],
+    );
+  }
+
+  static CaddyConfig spaServer({
+    String listenAddress = 'localhost:8080',
+    String root = '/var/www/html',
+  }) {
+    return CaddyConfig(
+      listenAddress: listenAddress,
+      rawJson: jsonEncode({
+        'apps': {
+          'http': {
+            'servers': {
+              'srv0': {
+                'listen': [':${listenAddress.split(':').last}'],
+                'routes': [
+                  {
+                    'handle': [
+                      {'handler': 'file_server', 'root': root},
+                      {'handler': 'rewrite', 'uri': '/index.html'},
+                    ],
+                  },
+                ],
+              },
+            },
+          },
+        },
+      }),
+    );
+  }
+
+  static CaddyConfig apiGateway({String listenAddress = 'localhost:8080'}) {
+    return CaddyConfig(
+      listenAddress: listenAddress,
+      rawJson: jsonEncode({
+        'apps': {
+          'http': {
+            'servers': {
+              'srv0': {
+                'listen': [':${listenAddress.split(':').last}'],
+                'routes': [
+                  {
+                    'match': [
+                      {
+                        'path': ['/api/*'],
+                      },
+                    ],
+                    'handle': [
+                      {
+                        'handler': 'reverse_proxy',
+                        'upstreams': [
+                          {'dial': 'localhost:3000'},
+                        ],
+                      },
+                    ],
+                  },
+                  {
+                    'handle': [
+                      {'handler': 'file_server', 'root': '/var/www/html'},
+                    ],
+                  },
+                ],
+              },
+            },
+          },
+        },
+      }),
+    );
+  }
+
+  static String? validate(CaddyConfig config) {
+    try {
+      config.toJson();
+      if (config.rawJson != null) {
+        jsonDecode(config.rawJson!);
+      }
+      return null;
+    } on FormatException catch (e) {
+      return 'Invalid JSON: ${e.message}';
+    } catch (e) {
+      return e.toString();
+    }
+  }
+}

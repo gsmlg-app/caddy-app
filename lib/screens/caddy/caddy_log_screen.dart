@@ -16,11 +16,14 @@ class CaddyLogScreen extends StatefulWidget {
 
 class _CaddyLogScreenState extends State<CaddyLogScreen> {
   final ScrollController _scrollController = ScrollController();
+  final TextEditingController _searchController = TextEditingController();
   bool _autoScroll = true;
+  bool _showSearch = false;
 
   @override
   void dispose() {
     _scrollController.dispose();
+    _searchController.dispose();
     super.dispose();
   }
 
@@ -34,12 +37,39 @@ class _CaddyLogScreenState extends State<CaddyLogScreen> {
     }
   }
 
+  Color? _logLineColor(String line) {
+    final upper = line.toUpperCase();
+    if (upper.contains('ERROR') || upper.contains('"level":"error"')) {
+      return Colors.red;
+    }
+    if (upper.contains('WARN') || upper.contains('"level":"warn"')) {
+      return Colors.orange;
+    }
+    if (upper.contains('DEBUG') || upper.contains('"level":"debug"')) {
+      return Colors.grey;
+    }
+    return null;
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
         title: Text(context.l10n.caddyLogs),
         actions: [
+          IconButton(
+            icon: Icon(_showSearch ? Icons.search_off : Icons.search),
+            tooltip: context.l10n.caddyLogSearch,
+            onPressed: () {
+              setState(() {
+                _showSearch = !_showSearch;
+                if (!_showSearch) {
+                  _searchController.clear();
+                  context.read<CaddyBloc>().add(const CaddySetLogSearch(''));
+                }
+              });
+            },
+          ),
           IconButton(
             icon: Icon(_autoScroll ? Icons.lock : Icons.lock_open),
             tooltip: 'Auto-scroll',
@@ -49,7 +79,9 @@ class _CaddyLogScreenState extends State<CaddyLogScreen> {
             icon: const Icon(Icons.copy),
             tooltip: 'Copy logs',
             onPressed: () {
-              final logs = context.read<CaddyBloc>().state.logs.join('\n');
+              final logs = context.read<CaddyBloc>().state.filteredLogs.join(
+                '\n',
+              );
               Clipboard.setData(ClipboardData(text: logs));
               ScaffoldMessenger.of(context).showSnackBar(
                 const SnackBar(content: Text('Logs copied to clipboard')),
@@ -64,6 +96,39 @@ class _CaddyLogScreenState extends State<CaddyLogScreen> {
             },
           ),
         ],
+        bottom: PreferredSize(
+          preferredSize: Size.fromHeight(_showSearch ? 100 : 48),
+          child: Column(
+            children: [
+              _LogLevelFilter(),
+              if (_showSearch)
+                Padding(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 4,
+                  ),
+                  child: TextField(
+                    controller: _searchController,
+                    decoration: InputDecoration(
+                      hintText: context.l10n.caddyLogSearch,
+                      prefixIcon: const Icon(Icons.search, size: 20),
+                      isDense: true,
+                      contentPadding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 8,
+                      ),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                    ),
+                    onChanged: (query) {
+                      context.read<CaddyBloc>().add(CaddySetLogSearch(query));
+                    },
+                  ),
+                ),
+            ],
+          ),
+        ),
       ),
       body: BlocConsumer<CaddyBloc, CaddyState>(
         listenWhen: (prev, curr) =>
@@ -74,7 +139,9 @@ class _CaddyLogScreenState extends State<CaddyLogScreen> {
           });
         },
         builder: (context, state) {
-          if (state.logs.isEmpty) {
+          final logs = state.filteredLogs;
+
+          if (logs.isEmpty) {
             return Center(
               child: Text(
                 context.l10n.caddyNoLogs,
@@ -85,17 +152,59 @@ class _CaddyLogScreenState extends State<CaddyLogScreen> {
 
           return ListView.builder(
             controller: _scrollController,
-            itemCount: state.logs.length,
+            itemCount: logs.length,
             padding: const EdgeInsets.all(8),
             itemBuilder: (context, index) {
+              final line = logs[index];
               return Text(
-                state.logs[index],
-                style: const TextStyle(fontFamily: 'monospace', fontSize: 12),
+                line,
+                style: TextStyle(
+                  fontFamily: 'monospace',
+                  fontSize: 12,
+                  color: _logLineColor(line),
+                ),
               );
             },
           );
         },
       ),
+    );
+  }
+}
+
+class _LogLevelFilter extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    return BlocBuilder<CaddyBloc, CaddyState>(
+      buildWhen: (prev, curr) => prev.logFilter != curr.logFilter,
+      builder: (context, state) {
+        return SingleChildScrollView(
+          scrollDirection: Axis.horizontal,
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+          child: Row(
+            children: CaddyLogLevel.values.map((level) {
+              final label = switch (level) {
+                CaddyLogLevel.all => context.l10n.caddyLogLevelAll,
+                CaddyLogLevel.debug => context.l10n.caddyLogLevelDebug,
+                CaddyLogLevel.info => context.l10n.caddyLogLevelInfo,
+                CaddyLogLevel.warn => context.l10n.caddyLogLevelWarn,
+                CaddyLogLevel.error => context.l10n.caddyLogLevelError,
+              };
+              final selected = state.logFilter == level;
+              return Padding(
+                padding: const EdgeInsets.only(right: 8),
+                child: FilterChip(
+                  label: Text(label),
+                  selected: selected,
+                  onSelected: (_) {
+                    context.read<CaddyBloc>().add(CaddySetLogFilter(level));
+                  },
+                ),
+              );
+            }).toList(),
+          ),
+        );
+      },
     );
   }
 }

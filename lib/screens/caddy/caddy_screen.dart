@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:app_adaptive_widgets/app_adaptive_widgets.dart';
 import 'package:app_locale/app_locale.dart';
 import 'package:caddy_bloc/caddy_bloc.dart';
@@ -42,6 +44,8 @@ class CaddyScreen extends StatelessWidget {
                   const SizedBox(height: 16),
                   _ConfigSummary(state: state),
                   const SizedBox(height: 16),
+                  _AdminApiCard(state: state),
+                  const SizedBox(height: 16),
                   _NavigationLinks(state: state),
                 ],
               ),
@@ -53,13 +57,58 @@ class CaddyScreen extends StatelessWidget {
   }
 }
 
-class _StatusCard extends StatelessWidget {
+class _StatusCard extends StatefulWidget {
   const _StatusCard({required this.state});
 
   final CaddyState state;
 
   @override
+  State<_StatusCard> createState() => _StatusCardState();
+}
+
+class _StatusCardState extends State<_StatusCard> {
+  Timer? _uptimeTimer;
+
+  @override
+  void initState() {
+    super.initState();
+    _startTimerIfRunning();
+  }
+
+  @override
+  void didUpdateWidget(_StatusCard oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.state.isRunning != widget.state.isRunning) {
+      _startTimerIfRunning();
+    }
+  }
+
+  void _startTimerIfRunning() {
+    _uptimeTimer?.cancel();
+    if (widget.state.isRunning) {
+      _uptimeTimer = Timer.periodic(
+        const Duration(seconds: 1),
+        (_) => setState(() {}),
+      );
+    }
+  }
+
+  @override
+  void dispose() {
+    _uptimeTimer?.cancel();
+    super.dispose();
+  }
+
+  String _formatDuration(Duration d) {
+    final hours = d.inHours.toString().padLeft(2, '0');
+    final minutes = (d.inMinutes % 60).toString().padLeft(2, '0');
+    final seconds = (d.inSeconds % 60).toString().padLeft(2, '0');
+    return '$hours:$minutes:$seconds';
+  }
+
+  @override
   Widget build(BuildContext context) {
+    final state = widget.state;
     final (color, icon, label) = switch (state.status) {
       CaddyRunning() => (
         Colors.green,
@@ -83,19 +132,45 @@ class _StatusCard extends StatelessWidget {
       ),
     };
 
+    final startedAt = state.startedAt;
+    final uptime = startedAt != null
+        ? DateTime.now().difference(startedAt)
+        : null;
+
     return Card(
       color: color.withValues(alpha: 0.1),
-      child: ListTile(
-        leading: Icon(icon, color: color, size: 40),
-        title: Text(
-          label,
-          style: Theme.of(
-            context,
-          ).textTheme.titleMedium?.copyWith(color: color),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Row(
+          children: [
+            Icon(icon, color: color, size: 40),
+            const SizedBox(width: 16),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    label,
+                    style: Theme.of(
+                      context,
+                    ).textTheme.titleMedium?.copyWith(color: color),
+                  ),
+                  if (state.isRunning)
+                    Text(
+                      context.l10n.caddyListenAddress(
+                        state.config.listenAddress,
+                      ),
+                    ),
+                  if (uptime != null)
+                    Text(
+                      context.l10n.caddyUptime(_formatDuration(uptime)),
+                      style: Theme.of(context).textTheme.bodySmall,
+                    ),
+                ],
+              ),
+            ),
+          ],
         ),
-        subtitle: state.isRunning
-            ? Text(context.l10n.caddyListenAddress(state.config.listenAddress))
-            : null,
       ),
     );
   }
@@ -165,6 +240,36 @@ class _ConfigSummary extends StatelessWidget {
             Text('Routes: ${state.config.routes.length}'),
           ],
         ),
+      ),
+    );
+  }
+}
+
+class _AdminApiCard extends StatelessWidget {
+  const _AdminApiCard({required this.state});
+
+  final CaddyState state;
+
+  @override
+  Widget build(BuildContext context) {
+    return Card(
+      child: SwitchListTile(
+        title: Text(context.l10n.caddyAdminApi),
+        subtitle: Text(
+          state.adminEnabled
+              ? context.l10n.caddyAdminApiEnabled('localhost:2019')
+              : context.l10n.caddyAdminApiDisabled,
+        ),
+        secondary: Icon(
+          Icons.admin_panel_settings,
+          color: state.adminEnabled
+              ? Theme.of(context).colorScheme.primary
+              : null,
+        ),
+        value: state.adminEnabled,
+        onChanged: (_) {
+          context.read<CaddyBloc>().add(const CaddyToggleAdmin());
+        },
       ),
     );
   }

@@ -39,3 +39,27 @@ final class CaddyLogReceived extends CaddyEvent {
 final class CaddyClearLogs extends CaddyEvent {
   const CaddyClearLogs();
 }
+
+final class CaddyToggleAdmin extends CaddyEvent {
+  const CaddyToggleAdmin();
+}
+
+final class CaddySetLogFilter extends CaddyEvent {
+  const CaddySetLogFilter(this.level);
+
+  final CaddyLogLevel level;
+}
+
+final class CaddySetLogSearch extends CaddyEvent {
+  const CaddySetLogSearch(this.query);
+
+  final String query;
+}
+
+final class CaddyLifecyclePause extends CaddyEvent {
+  const CaddyLifecyclePause();
+}
+
+final class CaddyLifecycleResume extends CaddyEvent {
+  const CaddyLifecycleResume();
+}

@@ -16,6 +16,11 @@ class CaddyBloc extends Bloc<CaddyEvent, CaddyState> {
     on<CaddyUpdateConfig>(_onUpdateConfig);
     on<CaddyLogReceived>(_onLogReceived);
     on<CaddyClearLogs>(_onClearLogs);
+    on<CaddyToggleAdmin>(_onToggleAdmin);
+    on<CaddySetLogFilter>(_onSetLogFilter);
+    on<CaddySetLogSearch>(_onSetLogSearch);
+    on<CaddyLifecyclePause>(_onLifecyclePause);
+    on<CaddyLifecycleResume>(_onLifecycleResume);
 
     _logSubscription = _service.logStream.listen(
       (line) => add(CaddyLogReceived(line)),
@@ -24,6 +29,7 @@ class CaddyBloc extends Bloc<CaddyEvent, CaddyState> {
 
   final CaddyService _service;
   StreamSubscription<String>? _logSubscription;
+  CaddyConfig? _configBeforePause;
 
   static const _maxLogs = 500;
 
@@ -67,6 +73,42 @@ class CaddyBloc extends Bloc<CaddyEvent, CaddyState> {
 
   void _onClearLogs(CaddyClearLogs event, Emitter<CaddyState> emit) {
     emit(state.copyWith(logs: []));
+  }
+
+  void _onToggleAdmin(CaddyToggleAdmin event, Emitter<CaddyState> emit) {
+    emit(state.copyWith(adminEnabled: !state.adminEnabled));
+  }
+
+  void _onSetLogFilter(CaddySetLogFilter event, Emitter<CaddyState> emit) {
+    emit(state.copyWith(logFilter: event.level));
+  }
+
+  void _onSetLogSearch(CaddySetLogSearch event, Emitter<CaddyState> emit) {
+    emit(state.copyWith(logSearchQuery: event.query));
+  }
+
+  Future<void> _onLifecyclePause(
+    CaddyLifecyclePause event,
+    Emitter<CaddyState> emit,
+  ) async {
+    if (state.isRunning) {
+      _configBeforePause = state.config;
+      final status = await _service.stop();
+      emit(state.copyWith(status: status));
+    }
+  }
+
+  Future<void> _onLifecycleResume(
+    CaddyLifecycleResume event,
+    Emitter<CaddyState> emit,
+  ) async {
+    final config = _configBeforePause;
+    if (config != null) {
+      _configBeforePause = null;
+      emit(state.copyWith(status: const CaddyLoading()));
+      final status = await _service.start(config);
+      emit(state.copyWith(status: status));
+    }
   }
 
   @override

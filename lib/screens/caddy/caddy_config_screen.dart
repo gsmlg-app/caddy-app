@@ -39,20 +39,53 @@ class _CaddyConfigScreenState extends State<CaddyConfigScreen>
     super.dispose();
   }
 
-  void _saveConfig() {
+  CaddyConfig _buildConfig() {
     final bloc = context.read<CaddyBloc>();
-    final CaddyConfig config;
-
     if (_tabController.index == 0) {
-      config = CaddyConfig(
+      return CaddyConfig(
         listenAddress: _listenController.text,
         routes: bloc.state.config.routes,
       );
     } else {
-      config = CaddyConfig(rawJson: _rawJsonController.text);
+      return CaddyConfig(rawJson: _rawJsonController.text);
+    }
+  }
+
+  void _validateConfig() {
+    final config = _buildConfig();
+    final error = CaddyConfigPresets.validate(config);
+    final messenger = ScaffoldMessenger.of(context);
+    if (error == null) {
+      messenger.showSnackBar(
+        SnackBar(
+          content: Text(context.l10n.caddyConfigValid),
+          backgroundColor: Colors.green,
+        ),
+      );
+    } else {
+      messenger.showSnackBar(
+        SnackBar(
+          content: Text(context.l10n.caddyConfigInvalid(error)),
+          backgroundColor: Theme.of(context).colorScheme.error,
+        ),
+      );
+    }
+  }
+
+  void _saveConfig() {
+    final config = _buildConfig();
+    final error = CaddyConfigPresets.validate(config);
+    if (error != null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(context.l10n.caddyConfigInvalid(error)),
+          backgroundColor: Theme.of(context).colorScheme.error,
+        ),
+      );
+      return;
     }
 
-    bloc.add(CaddyUpdateConfig(config));
+    context.read<CaddyBloc>().add(CaddyUpdateConfig(config));
     ScaffoldMessenger.of(
       context,
     ).showSnackBar(SnackBar(content: Text(context.l10n.success)));
@@ -64,6 +97,15 @@ class _CaddyConfigScreenState extends State<CaddyConfigScreen>
     if (bloc.state.isRunning) {
       bloc.add(CaddyReload(bloc.state.config));
     }
+  }
+
+  void _loadPreset(CaddyConfig preset) {
+    _listenController.text = preset.listenAddress;
+    _rawJsonController.text = preset.rawJson ?? preset.toJsonString();
+    context.read<CaddyBloc>().add(CaddyUpdateConfig(preset));
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text(context.l10n.success)));
   }
 
   @override
@@ -79,6 +121,58 @@ class _CaddyConfigScreenState extends State<CaddyConfigScreen>
           ],
         ),
         actions: [
+          PopupMenuButton<String>(
+            icon: const Icon(Icons.snippet_folder),
+            tooltip: context.l10n.caddyConfigPresets,
+            onSelected: (value) {
+              final preset = switch (value) {
+                'static' => CaddyConfigPresets.staticFileServer(),
+                'proxy' => CaddyConfigPresets.reverseProxy(),
+                'spa' => CaddyConfigPresets.spaServer(),
+                'api' => CaddyConfigPresets.apiGateway(),
+                _ => null,
+              };
+              if (preset != null) _loadPreset(preset);
+            },
+            itemBuilder: (context) => [
+              PopupMenuItem(
+                value: 'static',
+                child: ListTile(
+                  leading: const Icon(Icons.folder),
+                  title: Text(context.l10n.caddyPresetStaticFile),
+                  contentPadding: EdgeInsets.zero,
+                ),
+              ),
+              PopupMenuItem(
+                value: 'proxy',
+                child: ListTile(
+                  leading: const Icon(Icons.swap_horiz),
+                  title: Text(context.l10n.caddyPresetReverseProxy),
+                  contentPadding: EdgeInsets.zero,
+                ),
+              ),
+              PopupMenuItem(
+                value: 'spa',
+                child: ListTile(
+                  leading: const Icon(Icons.web),
+                  title: Text(context.l10n.caddyPresetSpa),
+                  contentPadding: EdgeInsets.zero,
+                ),
+              ),
+              PopupMenuItem(
+                value: 'api',
+                child: ListTile(
+                  leading: const Icon(Icons.api),
+                  title: Text(context.l10n.caddyPresetApiGateway),
+                  contentPadding: EdgeInsets.zero,
+                ),
+              ),
+            ],
+          ),
+          TextButton(
+            onPressed: _validateConfig,
+            child: Text(context.l10n.caddyValidate),
+          ),
           TextButton(
             onPressed: _saveConfig,
             child: Text(context.l10n.caddySave),
@@ -121,9 +215,20 @@ class _SimpleConfigForm extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 16),
-            Text(
-              'Routes (${state.config.routes.length})',
-              style: Theme.of(context).textTheme.titleSmall,
+            Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    'Routes (${state.config.routes.length})',
+                    style: Theme.of(context).textTheme.titleSmall,
+                  ),
+                ),
+                IconButton(
+                  icon: const Icon(Icons.add),
+                  tooltip: context.l10n.caddyAddRoute,
+                  onPressed: () => _showAddRouteDialog(context),
+                ),
+              ],
             ),
             const SizedBox(height: 8),
             if (state.config.routes.isEmpty)
@@ -133,20 +238,122 @@ class _SimpleConfigForm extends StatelessWidget {
                   child: Text('No routes configured'),
                 ),
               ),
-            ...state.config.routes.map(
-              (route) => Card(
+            ...state.config.routes.asMap().entries.map(
+              (entry) => Card(
                 child: ListTile(
-                  title: Text(route.path),
-                  subtitle: Text(switch (route.handler) {
+                  title: Text(entry.value.path),
+                  subtitle: Text(switch (entry.value.handler) {
                     StaticFileHandler(root: final root) =>
                       'Static Files: $root',
                     ReverseProxyHandler(upstreams: final upstreams) =>
                       'Reverse Proxy: ${upstreams.join(', ')}',
                   }),
+                  trailing: IconButton(
+                    icon: const Icon(Icons.delete_outline),
+                    onPressed: () {
+                      final routes = [...state.config.routes]
+                        ..removeAt(entry.key);
+                      context.read<CaddyBloc>().add(
+                        CaddyUpdateConfig(
+                          state.config.copyWith(routes: routes),
+                        ),
+                      );
+                    },
+                  ),
                 ),
               ),
             ),
           ],
+        );
+      },
+    );
+  }
+
+  void _showAddRouteDialog(BuildContext context) {
+    final pathController = TextEditingController(text: '/*');
+    final valueController = TextEditingController();
+    var isStaticFile = true;
+
+    showDialog(
+      context: context,
+      builder: (dialogContext) {
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            return AlertDialog(
+              title: Text(dialogContext.l10n.caddyAddRoute),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  TextField(
+                    controller: pathController,
+                    decoration: InputDecoration(
+                      labelText: dialogContext.l10n.caddyRoutePath,
+                      border: const OutlineInputBorder(),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  SegmentedButton<bool>(
+                    segments: [
+                      ButtonSegment(
+                        value: true,
+                        label: Text(dialogContext.l10n.caddyStaticFiles),
+                        icon: const Icon(Icons.folder),
+                      ),
+                      ButtonSegment(
+                        value: false,
+                        label: Text(dialogContext.l10n.caddyReverseProxy),
+                        icon: const Icon(Icons.swap_horiz),
+                      ),
+                    ],
+                    selected: {isStaticFile},
+                    onSelectionChanged: (v) {
+                      setDialogState(() => isStaticFile = v.first);
+                    },
+                  ),
+                  const SizedBox(height: 12),
+                  TextField(
+                    controller: valueController,
+                    decoration: InputDecoration(
+                      labelText: isStaticFile
+                          ? dialogContext.l10n.caddyFileRoot
+                          : dialogContext.l10n.caddyUpstreamAddress,
+                      hintText: isStaticFile
+                          ? '/var/www/html'
+                          : 'localhost:3000',
+                      border: const OutlineInputBorder(),
+                    ),
+                  ),
+                ],
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.of(dialogContext).pop(),
+                  child: Text(dialogContext.l10n.cancel),
+                ),
+                FilledButton(
+                  onPressed: () {
+                    final bloc = dialogContext.read<CaddyBloc>();
+                    final handler = isStaticFile
+                        ? StaticFileHandler(root: valueController.text)
+                        : ReverseProxyHandler(upstreams: [valueController.text])
+                              as CaddyHandler;
+                    final route = CaddyRoute(
+                      path: pathController.text,
+                      handler: handler,
+                    );
+                    final routes = [...bloc.state.config.routes, route];
+                    bloc.add(
+                      CaddyUpdateConfig(
+                        bloc.state.config.copyWith(routes: routes),
+                      ),
+                    );
+                    Navigator.of(dialogContext).pop();
+                  },
+                  child: Text(dialogContext.l10n.ok),
+                ),
+              ],
+            );
+          },
         );
       },
     );
