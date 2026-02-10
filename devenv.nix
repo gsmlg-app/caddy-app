@@ -7,12 +7,17 @@ in
 {
   env.GREET = "Caddy App";
 
+  env.GOPATH = "${builtins.getEnv "HOME"}/go";
+
   packages = [
     pkgs-stable.git
     pkgs-stable.figlet
     pkgs-stable.lolcat
     pkgs-stable.watchman
     pkgs-stable.inotify-tools
+    pkgs-stable.go
+    pkgs-stable.gomobile
+    pkgs-stable.gnumake
   ];
 
   android = {

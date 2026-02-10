@@ -1,5 +1,6 @@
 import 'package:app_locale/app_locale.dart';
 import 'package:flutter/material.dart';
+import 'package:caddy_app/screens/caddy/caddy_screen.dart';
 import 'package:caddy_app/screens/home/home_screen.dart';
 import 'package:caddy_app/screens/settings/settings_screen.dart';
 import 'package:caddy_app/screens/showcase/showcase_screen.dart';
@@ -9,6 +10,7 @@ class Destinations {
   /// List of route names corresponding to navigation destinations
   static const List<String> routeNames = [
     HomeScreen.name,
+    CaddyScreen.name,
     ShowcaseScreen.name,
     SettingsScreen.name,
   ];
@@ -20,6 +22,12 @@ class Destinations {
           icon: const Icon(Icons.home_outlined),
           selectedIcon: const Icon(Icons.home),
           label: context.l10n.navHome,
+        ),
+        NavigationDestination(
+          key: const Key(CaddyScreen.name),
+          icon: const Icon(Icons.dns_outlined),
+          selectedIcon: const Icon(Icons.dns),
+          label: context.l10n.navCaddy,
         ),
         NavigationDestination(
           key: const Key(ShowcaseScreen.name),

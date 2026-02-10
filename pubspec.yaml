@@ -31,6 +31,8 @@ workspace:
   - app_plugin/client_info/client_info_linux
   - app_plugin/client_info/client_info_macos
   - app_plugin/client_info/client_info_windows
+  - app_plugin/caddy
+  - app_bloc/caddy
   - third_party/form_bloc
   - third_party/flutter_form_bloc
   - third_party/flutter_adaptive_scaffold
@@ -78,6 +80,8 @@ dependencies:
   app_web_view: any
   demo_form: any
   flutter_form_bloc: any
+  caddy_service: any
+  caddy_bloc: any
 
 dev_dependencies:
   flutter_test:
@@ -230,4 +234,34 @@ melos:
         flutter: true
         fileExists: l10n.yaml
       description: Generate localization files from ARB files.
+
+    caddy:build:android:
+      run: make -C go/caddy_bridge android
+      description: Build Caddy bridge for Android (.aar)
+
+    caddy:build:ios:
+      run: make -C go/caddy_bridge ios
+      description: Build Caddy bridge for iOS (.xcframework)
+
+    caddy:build:linux:
+      run: make -C go/caddy_bridge linux
+      description: Build Caddy bridge for Linux (.so)
+
+    caddy:build:macos:
+      run: make -C go/caddy_bridge macos
+      description: Build Caddy bridge for macOS (.dylib)
+
+    caddy:build:desktop:
+      description: Build Caddy bridge for all desktop platforms
+      steps:
+        - melos run caddy:build:linux
+        - melos run caddy:build:macos
+
+    caddy:build:all:
+      description: Build Caddy bridge for all platforms
+      steps:
+        - melos run caddy:build:android
+        - melos run caddy:build:ios
+        - melos run caddy:build:linux
+        - melos run caddy:build:macos
 

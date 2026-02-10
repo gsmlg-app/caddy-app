@@ -38,5 +38,36 @@
   "analogDeadzone": "Analog Stick Deadzone",
   "lastInput": "Last Input",
   "controllerDebug": "Debug",
+  "navCaddy": "Caddy",
+  "caddyTitle": "Caddy Server",
+  "caddyRunning": "Running",
+  "caddyStopped": "Stopped",
+  "caddyError": "Error",
+  "caddyStart": "Start",
+  "caddyStop": "Stop",
+  "caddyReload": "Reload",
+  "caddyConfig": "Configuration",
+  "caddyConfigSimple": "Simple",
+  "caddyConfigRaw": "Raw JSON",
+  "caddySave": "Save",
+  "caddyApply": "Apply",
+  "caddyLogs": "Logs",
+  "caddyNoLogs": "No logs yet",
+  "caddyListenAddress": "Listen: {address}",
+  "@caddyListenAddress": {
+    "placeholders": {
+      "address": {
+        "type": "String"
+      }
+    }
+  },
+  "caddyPortInUse": "Port {port} is already in use",
+  "@caddyPortInUse": {
+    "placeholders": {
+      "port": {
+        "type": "String"
+      }
+    }
+  },
   "@@description": "App description"
 }

@@ -18,6 +18,8 @@ dependencies:
   gamepad_bloc: any
   app_database: any
   app_secure_storage: any
+  caddy_bloc: any
+  caddy_service: any
 
 dev_dependencies:
   flutter_test:

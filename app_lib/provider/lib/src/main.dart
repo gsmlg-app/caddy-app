@@ -1,5 +1,7 @@
 import 'package:app_database/app_database.dart';
 import 'package:app_secure_storage/app_secure_storage.dart';
+import 'package:caddy_bloc/caddy_bloc.dart';
+import 'package:caddy_service/caddy_service.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:gamepad_bloc/gamepad_bloc.dart';
@@ -69,6 +71,7 @@ class AppBlocProvider extends StatefulWidget {
 
 class _AppBlocProviderState extends State<AppBlocProvider> {
   late final GamepadBloc _gamepadBloc;
+  late final CaddyBloc _caddyBloc;
 
   @override
   void initState() {
@@ -78,18 +81,23 @@ class _AppBlocProviderState extends State<AppBlocProvider> {
       routeNames: widget.routeNames,
     );
     _gamepadBloc.add(const GamepadStartListening());
+    _caddyBloc = CaddyBloc(CaddyService.instance);
   }
 
   @override
   void dispose() {
     _gamepadBloc.close();
+    _caddyBloc.close();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
-    return BlocProvider<GamepadBloc>.value(
-      value: _gamepadBloc,
+    return MultiBlocProvider(
+      providers: [
+        BlocProvider<GamepadBloc>.value(value: _gamepadBloc),
+        BlocProvider<CaddyBloc>.value(value: _caddyBloc),
+      ],
       child: widget.child,
     );
   }

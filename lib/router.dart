@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:caddy_app/screens/app/error_screen.dart';
 import 'package:caddy_app/screens/app/splash_screen.dart';
+import 'package:caddy_app/screens/caddy/caddy_config_screen.dart';
+import 'package:caddy_app/screens/caddy/caddy_log_screen.dart';
+import 'package:caddy_app/screens/caddy/caddy_screen.dart';
 import 'package:caddy_app/screens/home/home_screen.dart';
 import 'package:caddy_app/screens/settings/accent_color_settings_screen.dart';
 import 'package:caddy_app/screens/settings/app_settings_screen.dart';
@@ -55,6 +58,41 @@ class AppRouter {
           child: const HomeScreen(),
         );
       },
+    ),
+    GoRoute(
+      name: CaddyScreen.name,
+      path: CaddyScreen.path,
+      pageBuilder: (context, state) {
+        return NoTransitionPage<void>(
+          key: state.pageKey,
+          restorationId: state.pageKey.value,
+          child: const CaddyScreen(),
+        );
+      },
+      routes: [
+        GoRoute(
+          name: CaddyConfigScreen.name,
+          path: CaddyConfigScreen.path,
+          pageBuilder: (context, state) {
+            return NoTransitionPage<void>(
+              key: state.pageKey,
+              restorationId: state.pageKey.value,
+              child: const CaddyConfigScreen(),
+            );
+          },
+        ),
+        GoRoute(
+          name: CaddyLogScreen.name,
+          path: CaddyLogScreen.path,
+          pageBuilder: (context, state) {
+            return NoTransitionPage<void>(
+              key: state.pageKey,
+              restorationId: state.pageKey.value,
+              child: const CaddyLogScreen(),
+            );
+          },
+        ),
+      ],
     ),
     GoRoute(
       name: ShowcaseScreen.name,
