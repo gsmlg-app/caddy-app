@@ -702,4 +702,126 @@ void main() {
       },
     );
   });
+
+  group('Edge cases', () {
+    blocTest<CaddyBloc, CaddyState>(
+      'CaddyReload with error preserves previous config',
+      build: () {
+        mockService.reloadResult = const CaddyError(message: 'reload failed');
+        return CaddyBloc(mockService);
+      },
+      seed: () => CaddyState.initial().copyWith(
+        config: const CaddyConfig(listenAddress: 'localhost:9090'),
+      ),
+      act: (bloc) => bloc.add(
+        const CaddyReload(CaddyConfig(listenAddress: 'localhost:9090')),
+      ),
+      verify: (bloc) {
+        expect(bloc.state.hasError, isTrue);
+        expect(bloc.state.config.listenAddress, 'localhost:9090');
+      },
+    );
+
+    blocTest<CaddyBloc, CaddyState>(
+      'CaddyStart with port-in-use error shows descriptive message',
+      build: () {
+        mockService.startResult = const CaddyError(
+          message: 'Port localhost:8080 is already in use',
+        );
+        return CaddyBloc(mockService);
+      },
+      act: (bloc) => bloc.add(const CaddyStart(CaddyConfig())),
+      verify: (bloc) {
+        expect(bloc.state.hasError, isTrue);
+        final error = bloc.state.status as CaddyError;
+        expect(error.message, contains('already in use'));
+      },
+    );
+
+    blocTest<CaddyBloc, CaddyState>(
+      'Multiple CaddyLogReceived events maintain order',
+      build: () => CaddyBloc(mockService),
+      act: (bloc) {
+        for (var i = 0; i < 5; i++) {
+          bloc.add(CaddyLogReceived('log-$i'));
+        }
+      },
+      verify: (bloc) {
+        expect(
+          bloc.state.logs,
+          orderedEquals(['log-0', 'log-1', 'log-2', 'log-3', 'log-4']),
+        );
+      },
+    );
+
+    blocTest<CaddyBloc, CaddyState>(
+      'CaddyUpdateConfig preserves logs and request count',
+      build: () => CaddyBloc(mockService),
+      seed: () => CaddyState.initial().copyWith(
+        logs: ['existing log'],
+        requestCount: 10,
+      ),
+      act: (bloc) => bloc.add(
+        const CaddyUpdateConfig(CaddyConfig(listenAddress: 'localhost:5555')),
+      ),
+      verify: (bloc) {
+        expect(bloc.state.config.listenAddress, 'localhost:5555');
+        expect(bloc.state.logs, ['existing log']);
+        expect(bloc.state.requestCount, 10);
+      },
+    );
+
+    blocTest<CaddyBloc, CaddyState>(
+      'CaddyToggleAdmin preserves other state',
+      build: () => CaddyBloc(mockService),
+      seed: () => CaddyState.initial().copyWith(
+        config: const CaddyConfig(listenAddress: 'localhost:7777'),
+        logFilter: CaddyLogLevel.error,
+        autoRestartOnResume: false,
+      ),
+      act: (bloc) => bloc.add(const CaddyToggleAdmin()),
+      verify: (bloc) {
+        expect(bloc.state.adminEnabled, isTrue);
+        expect(bloc.state.config.listenAddress, 'localhost:7777');
+        expect(bloc.state.logFilter, CaddyLogLevel.error);
+        expect(bloc.state.autoRestartOnResume, isFalse);
+      },
+    );
+
+    test('CaddyState.initial has expected defaults', () {
+      final state = CaddyState.initial();
+      expect(state.isStopped, isTrue);
+      expect(state.isRunning, isFalse);
+      expect(state.hasError, isFalse);
+      expect(state.isLoading, isFalse);
+      expect(state.config.listenAddress, 'localhost:2015');
+      expect(state.logs, isEmpty);
+      expect(state.adminEnabled, isFalse);
+      expect(state.logFilter, CaddyLogLevel.all);
+      expect(state.logSearchQuery, isEmpty);
+      expect(state.savedConfigNames, isEmpty);
+      expect(state.activeConfigName, isNull);
+      expect(state.requestCount, 0);
+      expect(state.autoRestartOnResume, isTrue);
+      expect(state.startedAt, isNull);
+      expect(state.filteredLogs, isEmpty);
+    });
+
+    test('CaddyState equality works correctly', () {
+      final state1 = CaddyState.initial();
+      final state2 = CaddyState.initial();
+      expect(state1, equals(state2));
+
+      final state3 = state1.copyWith(adminEnabled: true);
+      expect(state1, isNot(equals(state3)));
+    });
+
+    test('CaddyState copyWith with null activeConfigName', () {
+      final state = CaddyState.initial().copyWith(activeConfigName: 'test');
+      expect(state.activeConfigName, 'test');
+
+      final cleared = state.copyWith(activeConfigName: null);
+      expect(cleared.activeConfigName, isNull);
+    });
+  });
 }
