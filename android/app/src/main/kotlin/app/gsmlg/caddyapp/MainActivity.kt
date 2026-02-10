@@ -1,4 +1,4 @@
-package app.gsmlg.flutterapptemplate
+package app.gsmlg.caddyapp
 
 import io.flutter.embedding.android.FlutterActivity
 

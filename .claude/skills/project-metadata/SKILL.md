@@ -72,7 +72,7 @@ class MainActivity : FlutterActivity()
 
 **Directory rename required:**
 ```bash
-# Old: android/app/src/main/kotlin/dev/gsmlg/flutter_app_template/
+# Old: android/app/src/main/kotlin/dev/gsmlg/caddy_app/
 # New: android/app/src/main/kotlin/com/example/myapp/
 
 mkdir -p android/app/src/main/kotlin/com/example/myapp

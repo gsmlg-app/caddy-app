@@ -14,7 +14,7 @@ Sync Impact Report:
 - Follow-up TODOs: None
 -->
 
-# Flutter App Template Constitution
+# Caddy App Constitution
 
 ## Core Principles
 
@@ -130,7 +130,7 @@ Before merging any PR:
 
 ## Governance
 
-This constitution establishes the foundational rules for the Flutter App Template project.
+This constitution establishes the foundational rules for the Caddy App project.
 All contributors and AI assistants MUST verify compliance with these principles.
 
 **Amendment Process**:
