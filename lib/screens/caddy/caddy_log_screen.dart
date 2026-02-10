@@ -186,25 +186,134 @@ class _CaddyLogScreenState extends State<CaddyLogScreen> {
             );
           }
 
-          return ListView.builder(
-            controller: _scrollController,
-            itemCount: logs.length,
-            padding: const EdgeInsets.all(8),
-            itemBuilder: (context, index) {
-              final line = logs[index];
-              return Text(
-                line,
-                style: TextStyle(
-                  fontFamily: 'monospace',
-                  fontSize: 12,
-                  color: _logLineColor(line),
+          return Column(
+            children: [
+              if (state.logs.length != logs.length ||
+                  state.logSearchQuery.isNotEmpty)
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 4,
+                  ),
+                  color: Theme.of(context).colorScheme.surfaceContainerHighest,
+                  child: Row(
+                    children: [
+                      Text(
+                        '${logs.length} / ${state.logs.length} lines',
+                        style: Theme.of(context).textTheme.labelSmall,
+                      ),
+                      const Spacer(),
+                      if (state.logFilter != CaddyLogLevel.all)
+                        Padding(
+                          padding: const EdgeInsets.only(right: 8),
+                          child: Chip(
+                            label: Text(state.logFilter.name.toUpperCase()),
+                            visualDensity: VisualDensity.compact,
+                            padding: EdgeInsets.zero,
+                            labelStyle: Theme.of(context).textTheme.labelSmall,
+                          ),
+                        ),
+                      if (state.logSearchQuery.isNotEmpty)
+                        Chip(
+                          label: Text('"${state.logSearchQuery}"'),
+                          visualDensity: VisualDensity.compact,
+                          padding: EdgeInsets.zero,
+                          labelStyle: Theme.of(context).textTheme.labelSmall,
+                          onDeleted: () {
+                            _searchController.clear();
+                            context.read<CaddyBloc>().add(
+                              const CaddySetLogSearch(''),
+                            );
+                          },
+                        ),
+                    ],
+                  ),
                 ),
-              );
-            },
+              Expanded(
+                child: ListView.builder(
+                  controller: _scrollController,
+                  itemCount: logs.length,
+                  padding: const EdgeInsets.all(8),
+                  itemBuilder: (context, index) {
+                    final line = logs[index];
+                    final color = _logLineColor(line);
+                    final searchQuery = state.logSearchQuery;
+                    if (searchQuery.isNotEmpty) {
+                      return _HighlightedLogLine(
+                        line: line,
+                        query: searchQuery,
+                        color: color,
+                      );
+                    }
+                    return Text(
+                      line,
+                      style: TextStyle(
+                        fontFamily: 'monospace',
+                        fontSize: 12,
+                        color: color,
+                      ),
+                    );
+                  },
+                ),
+              ),
+            ],
           );
         },
       ),
     );
+  }
+}
+
+class _HighlightedLogLine extends StatelessWidget {
+  const _HighlightedLogLine({
+    required this.line,
+    required this.query,
+    this.color,
+  });
+
+  final String line;
+  final String query;
+  final Color? color;
+
+  @override
+  Widget build(BuildContext context) {
+    final style = TextStyle(
+      fontFamily: 'monospace',
+      fontSize: 12,
+      color: color,
+    );
+    final highlightStyle = style.copyWith(
+      backgroundColor: Colors.yellow.withValues(alpha: 0.4),
+      color: color ?? Theme.of(context).colorScheme.onSurface,
+      fontWeight: FontWeight.bold,
+    );
+
+    final lowerLine = line.toLowerCase();
+    final lowerQuery = query.toLowerCase();
+    final spans = <TextSpan>[];
+    var start = 0;
+
+    while (start < line.length) {
+      final matchIndex = lowerLine.indexOf(lowerQuery, start);
+      if (matchIndex == -1) {
+        spans.add(TextSpan(text: line.substring(start), style: style));
+        break;
+      }
+      if (matchIndex > start) {
+        spans.add(
+          TextSpan(text: line.substring(start, matchIndex), style: style),
+        );
+      }
+      spans.add(
+        TextSpan(
+          text: line.substring(matchIndex, matchIndex + query.length),
+          style: highlightStyle,
+        ),
+      );
+      start = matchIndex + query.length;
+    }
+
+    return RichText(text: TextSpan(children: spans));
   }
 }
 

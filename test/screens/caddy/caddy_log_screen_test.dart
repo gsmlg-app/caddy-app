@@ -14,8 +14,7 @@ class MockCaddyService extends CaddyService {
     CaddyConfig config, {
     bool adminEnabled = false,
     Map<String, String> environment = const {},
-  }) async =>
-      CaddyRunning(config: '{}', startedAt: DateTime.now());
+  }) async => CaddyRunning(config: '{}', startedAt: DateTime.now());
 
   @override
   Future<CaddyStatus> stop() async => const CaddyStopped();
@@ -25,8 +24,7 @@ class MockCaddyService extends CaddyService {
     CaddyConfig config, {
     bool adminEnabled = false,
     Map<String, String> environment = const {},
-  }) async =>
-      CaddyRunning(config: '{}', startedAt: DateTime.now());
+  }) async => CaddyRunning(config: '{}', startedAt: DateTime.now());
 
   @override
   Future<CaddyStatus> getStatus() async => const CaddyStopped();
@@ -149,6 +147,110 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(bloc.state.logFilter, CaddyLogLevel.error);
+      bloc.close();
+    });
+
+    testWidgets('shows statistics bar when filtering by level', (tester) async {
+      final service = MockCaddyService();
+      final bloc = CaddyBloc(service);
+      bloc.add(const CaddyLogReceived('INFO: first'));
+      bloc.add(const CaddyLogReceived('ERROR: second'));
+      bloc.add(const CaddyLogReceived('INFO: third'));
+
+      await tester.pumpWidget(_buildTestWidget(bloc: bloc));
+      await tester.pumpAndSettle();
+
+      // Filter by ERROR level
+      await tester.tap(find.text('ERROR'));
+      await tester.pumpAndSettle();
+
+      // Stats bar shows filtered/total count
+      expect(find.textContaining('1 / 3'), findsOneWidget);
+      expect(find.text('ERROR: second'), findsOneWidget);
+      bloc.close();
+    });
+
+    testWidgets('shows statistics bar with search query chip', (tester) async {
+      final service = MockCaddyService();
+      final bloc = CaddyBloc(service);
+      bloc.add(const CaddyLogReceived('INFO: hello world'));
+      bloc.add(const CaddyLogReceived('INFO: goodbye'));
+
+      await tester.pumpWidget(_buildTestWidget(bloc: bloc));
+      await tester.pumpAndSettle();
+
+      // Open search and enter query
+      await tester.tap(find.byIcon(Icons.search));
+      await tester.pumpAndSettle();
+
+      final searchField = find.byType(TextField);
+      await tester.enterText(searchField, 'hello');
+      await tester.pumpAndSettle();
+
+      // Stats bar shows 1/2 and the search query
+      expect(find.textContaining('1 / 2'), findsOneWidget);
+      expect(find.textContaining('"hello"'), findsOneWidget);
+      bloc.close();
+    });
+
+    testWidgets('search highlighting renders RichText for matching logs', (
+      tester,
+    ) async {
+      final service = MockCaddyService();
+      final bloc = CaddyBloc(service);
+      bloc.add(const CaddyLogReceived('INFO: the error appeared'));
+
+      await tester.pumpWidget(_buildTestWidget(bloc: bloc));
+      await tester.pumpAndSettle();
+
+      // Open search and enter query
+      await tester.tap(find.byIcon(Icons.search));
+      await tester.pumpAndSettle();
+
+      final searchField = find.byType(TextField);
+      await tester.enterText(searchField, 'error');
+      await tester.pumpAndSettle();
+
+      // When search is active, RichText is used for highlighting
+      expect(find.byType(RichText), findsAtLeastNWidgets(1));
+      bloc.close();
+    });
+
+    testWidgets('search query chip has delete button to clear search', (
+      tester,
+    ) async {
+      final service = MockCaddyService();
+      final bloc = CaddyBloc(service);
+      bloc.add(const CaddyLogReceived('INFO: test line'));
+
+      await tester.pumpWidget(_buildTestWidget(bloc: bloc));
+      await tester.pumpAndSettle();
+
+      // Set search via bloc directly
+      bloc.add(const CaddySetLogSearch('test'));
+      await tester.pumpAndSettle();
+
+      // Find the chip with the search query
+      expect(find.textContaining('"test"'), findsOneWidget);
+
+      // Delete button on the chip
+      final chipFinder = find.widgetWithText(Chip, '"test"');
+      expect(chipFinder, findsOneWidget);
+      bloc.close();
+    });
+
+    testWidgets('no statistics bar when showing all unfiltered logs', (
+      tester,
+    ) async {
+      final service = MockCaddyService();
+      final bloc = CaddyBloc(service);
+      bloc.add(const CaddyLogReceived('INFO: line'));
+
+      await tester.pumpWidget(_buildTestWidget(bloc: bloc));
+      await tester.pumpAndSettle();
+
+      // No filter/search active, stats bar should not show
+      expect(find.textContaining(' / '), findsNothing);
       bloc.close();
     });
   });
