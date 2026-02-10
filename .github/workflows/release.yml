@@ -116,6 +116,11 @@ jobs:
         with:
           ref: v${{ inputs.build-name }}
 
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.25'
+          cache-dependency-path: go/caddy_bridge/go.sum
+
       - uses: flutter-actions/setup-flutter@v4
 
       - name: Setup Java
@@ -123,6 +128,9 @@ jobs:
         with:
           distribution: 'temurin'
           java-version: '17'
+
+      - name: Install gomobile
+        run: go install golang.org/x/mobile/cmd/gomobile@latest && gomobile init
 
       - name: Cache dependencies
         uses: actions/cache@v5
@@ -132,6 +140,12 @@ jobs:
             .dart_tool
           key: ${{ runner.os }}-pub-${{ hashFiles('**/pubspec.lock') }}
           restore-keys: ${{ runner.os }}-pub-
+
+      - name: Build Caddy bridge (Android)
+        run: make -C go/caddy_bridge android
+
+      - name: Copy Caddy bridge library
+        run: cp go/caddy_bridge/build/caddy_bridge.aar android/app/libs/
 
       - name: Install tools
         run: dart pub global activate melos
@@ -161,7 +175,15 @@ jobs:
         with:
           ref: v${{ inputs.build-name }}
 
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.25'
+          cache-dependency-path: go/caddy_bridge/go.sum
+
       - uses: flutter-actions/setup-flutter@v4
+
+      - name: Install gomobile
+        run: go install golang.org/x/mobile/cmd/gomobile@latest && gomobile init
 
       - name: Cache dependencies
         uses: actions/cache@v5
@@ -171,6 +193,12 @@ jobs:
             .dart_tool
           key: ${{ runner.os }}-pub-${{ hashFiles('**/pubspec.lock') }}
           restore-keys: ${{ runner.os }}-pub-
+
+      - name: Build Caddy bridge (iOS)
+        run: make -C go/caddy_bridge ios
+
+      - name: Copy Caddy bridge framework
+        run: cp -r go/caddy_bridge/build/CaddyBridge.xcframework ios/
 
       - name: Install tools
         run: dart pub global activate melos
@@ -208,6 +236,11 @@ jobs:
         with:
           ref: v${{ inputs.build-name }}
 
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.25'
+          cache-dependency-path: go/caddy_bridge/go.sum
+
       - uses: flutter-actions/setup-flutter@v4
 
       - name: Install Linux build dependencies
@@ -223,6 +256,14 @@ jobs:
             .dart_tool
           key: ${{ runner.os }}-pub-${{ hashFiles('**/pubspec.lock') }}
           restore-keys: ${{ runner.os }}-pub-
+
+      - name: Build Caddy bridge (Linux)
+        run: make -C go/caddy_bridge linux
+
+      - name: Copy Caddy bridge library
+        run: |
+          mkdir -p linux/libs
+          cp go/caddy_bridge/build/libcaddy_bridge.so linux/libs/
 
       - name: Install tools
         run: dart pub global activate melos
@@ -257,6 +298,11 @@ jobs:
         with:
           ref: v${{ inputs.build-name }}
 
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.25'
+          cache-dependency-path: go/caddy_bridge/go.sum
+
       - uses: flutter-actions/setup-flutter@v4
 
       - name: Cache dependencies
@@ -267,6 +313,14 @@ jobs:
             .dart_tool
           key: ${{ runner.os }}-pub-${{ hashFiles('**/pubspec.lock') }}
           restore-keys: ${{ runner.os }}-pub-
+
+      - name: Build Caddy bridge (macOS)
+        run: make -C go/caddy_bridge macos
+
+      - name: Copy Caddy bridge library
+        run: |
+          mkdir -p macos/libs
+          cp go/caddy_bridge/build/libcaddy_bridge.dylib macos/libs/
 
       - name: Install tools
         run: dart pub global activate melos
