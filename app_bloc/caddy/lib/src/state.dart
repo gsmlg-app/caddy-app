@@ -14,6 +14,7 @@ class CaddyState extends Equatable {
     this.savedConfigNames = const [],
     this.activeConfigName,
     this.requestCount = 0,
+    this.autoRestartOnResume = true,
   });
 
   factory CaddyState.initial() {
@@ -30,6 +31,7 @@ class CaddyState extends Equatable {
   final List<String> savedConfigNames;
   final String? activeConfigName;
   final int requestCount;
+  final bool autoRestartOnResume;
 
   bool get isRunning => status is CaddyRunning;
   bool get isStopped => status is CaddyStopped;
@@ -68,6 +70,7 @@ class CaddyState extends Equatable {
     List<String>? savedConfigNames,
     Object? activeConfigName = _sentinel,
     int? requestCount,
+    bool? autoRestartOnResume,
   }) {
     return CaddyState(
       status: status ?? this.status,
@@ -82,6 +85,7 @@ class CaddyState extends Equatable {
           ? this.activeConfigName
           : activeConfigName as String?,
       requestCount: requestCount ?? this.requestCount,
+      autoRestartOnResume: autoRestartOnResume ?? this.autoRestartOnResume,
     );
   }
 
@@ -97,6 +101,7 @@ class CaddyState extends Equatable {
     savedConfigNames,
     activeConfigName,
     requestCount,
+    autoRestartOnResume,
   ];
 }
 

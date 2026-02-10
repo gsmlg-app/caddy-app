@@ -31,6 +31,7 @@ class CaddyBloc extends Bloc<CaddyEvent, CaddyState> {
     on<CaddySaveConfig>(_onSaveConfig);
     on<CaddyDeleteSavedConfig>(_onDeleteSavedConfig);
     on<CaddyLoadNamedConfig>(_onLoadNamedConfig);
+    on<CaddyToggleAutoRestart>(_onToggleAutoRestart);
     on<CaddyInitialize>(_onInitialize);
 
     _logSubscription = _service.logStream.listen(
@@ -64,11 +65,13 @@ class CaddyBloc extends Bloc<CaddyEvent, CaddyState> {
   static const _maxLogs = 10000;
 
   Future<void> _onStart(CaddyStart event, Emitter<CaddyState> emit) async {
-    emit(state.copyWith(
-      status: const CaddyLoading(),
-      config: event.config,
-      requestCount: 0,
-    ));
+    emit(
+      state.copyWith(
+        status: const CaddyLoading(),
+        config: event.config,
+        requestCount: 0,
+      ),
+    );
     final secrets = await _readSecrets();
     final status = await _service.start(
       event.config,
@@ -113,12 +116,15 @@ class CaddyBloc extends Bloc<CaddyEvent, CaddyState> {
       logs.removeRange(0, logs.length - _maxLogs);
     }
     // Caddy logs HTTP requests with "handled request" message
-    final isRequest = event.line.contains('"handled request"') ||
+    final isRequest =
+        event.line.contains('"handled request"') ||
         event.line.contains('handled request');
-    emit(state.copyWith(
-      logs: logs,
-      requestCount: isRequest ? state.requestCount + 1 : null,
-    ));
+    emit(
+      state.copyWith(
+        logs: logs,
+        requestCount: isRequest ? state.requestCount + 1 : null,
+      ),
+    );
   }
 
   void _onClearLogs(CaddyClearLogs event, Emitter<CaddyState> emit) {
@@ -137,6 +143,13 @@ class CaddyBloc extends Bloc<CaddyEvent, CaddyState> {
     emit(state.copyWith(logSearchQuery: event.query));
   }
 
+  void _onToggleAutoRestart(
+    CaddyToggleAutoRestart event,
+    Emitter<CaddyState> emit,
+  ) {
+    emit(state.copyWith(autoRestartOnResume: !state.autoRestartOnResume));
+  }
+
   Future<void> _onLifecyclePause(
     CaddyLifecyclePause event,
     Emitter<CaddyState> emit,
@@ -153,12 +166,14 @@ class CaddyBloc extends Bloc<CaddyEvent, CaddyState> {
     Emitter<CaddyState> emit,
   ) async {
     final config = _configBeforePause;
-    if (config != null) {
+    if (config != null && state.autoRestartOnResume) {
       _configBeforePause = null;
       emit(state.copyWith(status: const CaddyLoading()));
       final secrets = await _readSecrets();
       final status = await _service.start(config, environment: secrets);
       emit(state.copyWith(status: status));
+    } else {
+      _configBeforePause = null;
     }
   }
 

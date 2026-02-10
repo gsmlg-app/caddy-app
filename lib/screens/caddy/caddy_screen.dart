@@ -51,6 +51,8 @@ class CaddyScreen extends StatelessWidget {
                   const SizedBox(height: 16),
                   _AdminApiCard(state: state),
                   const SizedBox(height: 16),
+                  _AutoRestartCard(state: state),
+                  const SizedBox(height: 16),
                   _NavigationLinks(state: state),
                 ],
               ),
@@ -241,10 +243,7 @@ class _MetricsCard extends StatelessWidget {
             const SizedBox(height: 12),
             Row(
               children: [
-                Icon(
-                  Icons.http,
-                  color: Theme.of(context).colorScheme.primary,
-                ),
+                Icon(Icons.http, color: Theme.of(context).colorScheme.primary),
                 const SizedBox(width: 8),
                 Text(context.l10n.caddyRequestsServed),
                 const Spacer(),
@@ -316,6 +315,36 @@ class _AdminApiCard extends StatelessWidget {
         value: state.adminEnabled,
         onChanged: (_) {
           context.read<CaddyBloc>().add(const CaddyToggleAdmin());
+        },
+      ),
+    );
+  }
+}
+
+class _AutoRestartCard extends StatelessWidget {
+  const _AutoRestartCard({required this.state});
+
+  final CaddyState state;
+
+  @override
+  Widget build(BuildContext context) {
+    return Card(
+      child: SwitchListTile(
+        title: Text(context.l10n.caddyAutoRestart),
+        subtitle: Text(
+          state.autoRestartOnResume
+              ? context.l10n.caddyAutoRestartEnabled
+              : context.l10n.caddyAutoRestartDisabled,
+        ),
+        secondary: Icon(
+          Icons.restart_alt,
+          color: state.autoRestartOnResume
+              ? Theme.of(context).colorScheme.primary
+              : null,
+        ),
+        value: state.autoRestartOnResume,
+        onChanged: (_) {
+          context.read<CaddyBloc>().add(const CaddyToggleAutoRestart());
         },
       ),
     );

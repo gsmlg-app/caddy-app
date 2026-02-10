@@ -178,6 +178,9 @@
     }
   },
   "caddyConfigExportFailed": "Failed to export config",
+  "caddyAutoRestart": "Auto-restart on Resume",
+  "caddyAutoRestartEnabled": "Caddy will restart when app is resumed",
+  "caddyAutoRestartDisabled": "Caddy will stay stopped after resume",
   "caddyMetrics": "Metrics",
   "caddyRequestsServed": "Requests Served",
   "caddyRequestCount": "{count}",

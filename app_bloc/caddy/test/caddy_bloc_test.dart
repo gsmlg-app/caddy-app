@@ -262,16 +262,59 @@ void main() {
     );
 
     blocTest<CaddyBloc, CaddyState>(
+      'CaddyToggleAutoRestart toggles auto-restart state',
+      build: () => CaddyBloc(mockService),
+      act: (bloc) {
+        bloc.add(const CaddyToggleAutoRestart());
+        bloc.add(const CaddyToggleAutoRestart());
+      },
+      expect: () => [
+        isA<CaddyState>().having(
+          (s) => s.autoRestartOnResume,
+          'autoRestartOnResume',
+          false,
+        ),
+        isA<CaddyState>().having(
+          (s) => s.autoRestartOnResume,
+          'autoRestartOnResume',
+          true,
+        ),
+      ],
+    );
+
+    blocTest<CaddyBloc, CaddyState>(
+      'CaddyLifecycleResume does not restart when autoRestartOnResume is false',
+      build: () => CaddyBloc(mockService),
+      seed: () => CaddyState.initial().copyWith(
+        status: CaddyRunning(config: '{}', startedAt: DateTime.now()),
+        autoRestartOnResume: false,
+      ),
+      act: (bloc) async {
+        bloc.add(const CaddyLifecyclePause());
+        await Future<void>.delayed(const Duration(milliseconds: 50));
+        bloc.add(const CaddyLifecycleResume());
+      },
+      wait: const Duration(milliseconds: 100),
+      expect: () => [
+        isA<CaddyState>().having((s) => s.isStopped, 'isStopped', true),
+      ],
+    );
+
+    blocTest<CaddyBloc, CaddyState>(
       'CaddyLogReceived increments requestCount for handled requests',
       build: () => CaddyBloc(mockService),
       act: (bloc) {
-        bloc.add(const CaddyLogReceived(
-          '{"level":"info","msg":"handled request","status":200}',
-        ));
+        bloc.add(
+          const CaddyLogReceived(
+            '{"level":"info","msg":"handled request","status":200}',
+          ),
+        );
         bloc.add(const CaddyLogReceived('INFO: some other log'));
-        bloc.add(const CaddyLogReceived(
-          '{"level":"info","msg":"handled request","status":301}',
-        ));
+        bloc.add(
+          const CaddyLogReceived(
+            '{"level":"info","msg":"handled request","status":301}',
+          ),
+        );
       },
       verify: (bloc) {
         expect(bloc.state.requestCount, 2);
