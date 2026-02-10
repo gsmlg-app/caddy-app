@@ -13,6 +13,7 @@ class MockCaddyService extends CaddyService {
   Future<CaddyStatus> start(
     CaddyConfig config, {
     bool adminEnabled = false,
+    Map<String, String> environment = const {},
   }) async =>
       CaddyRunning(config: '{}', startedAt: DateTime.now());
 
@@ -23,6 +24,7 @@ class MockCaddyService extends CaddyService {
   Future<CaddyStatus> reload(
     CaddyConfig config, {
     bool adminEnabled = false,
+    Map<String, String> environment = const {},
   }) async =>
       CaddyRunning(config: '{}', startedAt: DateTime.now());
 

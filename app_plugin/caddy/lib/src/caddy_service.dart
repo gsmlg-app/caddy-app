@@ -40,11 +40,38 @@ class CaddyService {
     }
   }
 
+  /// Sets environment variables in the Caddy process.
+  /// [env] is a map of variable names to values.
+  /// Returns an empty string on success, or an error message.
+  Future<String> setEnvironment(Map<String, String> env) async {
+    if (env.isEmpty) return '';
+    _ensureInitialized();
+    final envJson = jsonEncode(env);
+
+    try {
+      if (_isDesktop) {
+        return _ffi!.setEnvironment(envJson);
+      } else {
+        return await _methodChannel!.setEnvironment(envJson);
+      }
+    } catch (e) {
+      return e.toString();
+    }
+  }
+
   Future<CaddyStatus> start(
     CaddyConfig config, {
     bool adminEnabled = false,
+    Map<String, String> environment = const {},
   }) async {
     _ensureInitialized();
+
+    // Inject environment variables before loading config
+    final envError = await setEnvironment(environment);
+    if (envError.isNotEmpty) {
+      return CaddyError(message: 'Failed to set environment: $envError');
+    }
+
     final configJson = config.toJsonString(adminEnabled: adminEnabled);
 
     try {
@@ -95,8 +122,16 @@ class CaddyService {
   Future<CaddyStatus> reload(
     CaddyConfig config, {
     bool adminEnabled = false,
+    Map<String, String> environment = const {},
   }) async {
     _ensureInitialized();
+
+    // Inject environment variables before reloading config
+    final envError = await setEnvironment(environment);
+    if (envError.isNotEmpty) {
+      return CaddyError(message: 'Failed to set environment: $envError');
+    }
+
     final configJson = config.toJsonString(adminEnabled: adminEnabled);
 
     try {

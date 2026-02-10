@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 
 import 'package:app_database/app_database.dart';
+import 'package:app_secure_storage/app_secure_storage.dart';
 import 'package:bloc/bloc.dart';
 import 'package:caddy_service/caddy_service.dart';
 import 'package:equatable/equatable.dart';
@@ -10,8 +11,9 @@ part 'event.dart';
 part 'state.dart';
 
 class CaddyBloc extends Bloc<CaddyEvent, CaddyState> {
-  CaddyBloc(this._service, {AppDatabase? database})
+  CaddyBloc(this._service, {AppDatabase? database, VaultRepository? vault})
     : _database = database,
+      _vault = vault,
       super(CaddyState.initial()) {
     on<CaddyStart>(_onStart);
     on<CaddyStop>(_onStop);
@@ -37,16 +39,36 @@ class CaddyBloc extends Bloc<CaddyEvent, CaddyState> {
 
   final CaddyService _service;
   final AppDatabase? _database;
+  final VaultRepository? _vault;
   StreamSubscription<String>? _logSubscription;
   CaddyConfig? _configBeforePause;
+
+  static const _secretPrefix = 'caddy_';
+
+  /// Reads all caddy secrets from the vault and returns them as
+  /// environment variables (without the caddy_ prefix).
+  Future<Map<String, String>> _readSecrets() async {
+    final vault = _vault;
+    if (vault == null) return const {};
+    final all = await vault.readAll();
+    final env = <String, String>{};
+    for (final entry in all.entries) {
+      if (entry.key.startsWith(_secretPrefix)) {
+        env[entry.key.substring(_secretPrefix.length)] = entry.value;
+      }
+    }
+    return env;
+  }
 
   static const _maxLogs = 500;
 
   Future<void> _onStart(CaddyStart event, Emitter<CaddyState> emit) async {
     emit(state.copyWith(status: const CaddyLoading(), config: event.config));
+    final secrets = await _readSecrets();
     final status = await _service.start(
       event.config,
       adminEnabled: state.adminEnabled,
+      environment: secrets,
     );
     emit(state.copyWith(status: status));
   }
@@ -59,9 +81,11 @@ class CaddyBloc extends Bloc<CaddyEvent, CaddyState> {
 
   Future<void> _onReload(CaddyReload event, Emitter<CaddyState> emit) async {
     emit(state.copyWith(status: const CaddyLoading(), config: event.config));
+    final secrets = await _readSecrets();
     final status = await _service.reload(
       event.config,
       adminEnabled: state.adminEnabled,
+      environment: secrets,
     );
     emit(state.copyWith(status: status));
   }
@@ -121,7 +145,8 @@ class CaddyBloc extends Bloc<CaddyEvent, CaddyState> {
     if (config != null) {
       _configBeforePause = null;
       emit(state.copyWith(status: const CaddyLoading()));
-      final status = await _service.start(config);
+      final secrets = await _readSecrets();
+      final status = await _service.start(config, environment: secrets);
       emit(state.copyWith(status: status));
     }
   }

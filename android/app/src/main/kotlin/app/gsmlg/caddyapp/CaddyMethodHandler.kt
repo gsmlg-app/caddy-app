@@ -35,6 +35,10 @@ class CaddyMethodHandler(messenger: BinaryMessenger) :
                     "status" -> {
                         caddy_bridge.CaddyBridge.getCaddyStatus()
                     }
+                    "setEnvironment" -> {
+                        val env = call.argument<String>("env") ?: "{}"
+                        caddy_bridge.CaddyBridge.setEnvironment(env)
+                    }
                     else -> {
                         result.notImplemented()
                         return@launch

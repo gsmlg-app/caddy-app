@@ -32,6 +32,13 @@ class CaddyMethodChannel {
     return result ?? '';
   }
 
+  Future<String> setEnvironment(String envJSON) async {
+    final result = await _methodChannel.invokeMethod<String>('setEnvironment', {
+      'env': envJSON,
+    });
+    return result ?? '';
+  }
+
   Stream<String> get logStream {
     return _eventChannel.receiveBroadcastStream().map((event) => '$event');
   }

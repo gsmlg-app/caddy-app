@@ -1,6 +1,7 @@
 import 'dart:convert';
 
 import 'package:app_database/app_database.dart';
+import 'package:app_secure_storage/app_secure_storage.dart';
 import 'package:bloc_test/bloc_test.dart';
 import 'package:caddy_bloc/caddy_bloc.dart';
 import 'package:caddy_service/caddy_service.dart';
@@ -20,11 +21,18 @@ class MockCaddyService extends CaddyService {
   );
   CaddyStatus statusResult = const CaddyStopped();
 
+  /// Captures the environment passed to start/reload for verification.
+  Map<String, String> lastEnvironment = {};
+
   @override
   Future<CaddyStatus> start(
     CaddyConfig config, {
     bool adminEnabled = false,
-  }) async => startResult;
+    Map<String, String> environment = const {},
+  }) async {
+    lastEnvironment = environment;
+    return startResult;
+  }
 
   @override
   Future<CaddyStatus> stop() async => stopResult;
@@ -33,13 +41,44 @@ class MockCaddyService extends CaddyService {
   Future<CaddyStatus> reload(
     CaddyConfig config, {
     bool adminEnabled = false,
-  }) async => reloadResult;
+    Map<String, String> environment = const {},
+  }) async {
+    lastEnvironment = environment;
+    return reloadResult;
+  }
 
   @override
   Future<CaddyStatus> getStatus() async => statusResult;
 
   @override
   Stream<String> get logStream => const Stream.empty();
+}
+
+class MockVaultRepository implements VaultRepository {
+  final Map<String, String> _store = {};
+
+  @override
+  Future<void> write({required String key, required String value}) async {
+    _store[key] = value;
+  }
+
+  @override
+  Future<String?> read({required String key}) async => _store[key];
+
+  @override
+  Future<void> delete({required String key}) async {
+    _store.remove(key);
+  }
+
+  @override
+  Future<bool> containsKey({required String key}) async =>
+      _store.containsKey(key);
+
+  @override
+  Future<void> deleteAll() async => _store.clear();
+
+  @override
+  Future<Map<String, String>> readAll() async => Map.of(_store);
 }
 
 void main() {
@@ -410,6 +449,89 @@ void main() {
       build: () => CaddyBloc(mockService),
       act: (bloc) => bloc.add(const CaddySaveConfig('test')),
       expect: () => [],
+    );
+  });
+
+  group('Secrets injection', () {
+    late MockVaultRepository mockVault;
+
+    setUp(() {
+      mockVault = MockVaultRepository();
+    });
+
+    blocTest<CaddyBloc, CaddyState>(
+      'CaddyStart injects caddy_ prefixed secrets as environment variables',
+      setUp: () async {
+        await mockVault.write(key: 'caddy_CF_API_TOKEN', value: 'cf-token-123');
+        await mockVault.write(key: 'caddy_AWS_ACCESS_KEY_ID', value: 'aws-key');
+        await mockVault.write(key: 'other_secret', value: 'ignored');
+      },
+      build: () => CaddyBloc(mockService, vault: mockVault),
+      act: (bloc) => bloc.add(const CaddyStart(CaddyConfig())),
+      expect: () => [
+        isA<CaddyState>().having((s) => s.isLoading, 'isLoading', true),
+        isA<CaddyState>().having((s) => s.isRunning, 'isRunning', true),
+      ],
+      verify: (_) {
+        expect(mockService.lastEnvironment, {
+          'CF_API_TOKEN': 'cf-token-123',
+          'AWS_ACCESS_KEY_ID': 'aws-key',
+        });
+      },
+    );
+
+    blocTest<CaddyBloc, CaddyState>(
+      'CaddyReload injects caddy_ prefixed secrets as environment variables',
+      setUp: () async {
+        await mockVault.write(key: 'caddy_DUCKDNS_TOKEN', value: 'duck-token');
+      },
+      build: () => CaddyBloc(mockService, vault: mockVault),
+      act: (bloc) => bloc.add(const CaddyReload(CaddyConfig())),
+      expect: () => [
+        isA<CaddyState>().having((s) => s.isLoading, 'isLoading', true),
+        isA<CaddyState>().having((s) => s.isRunning, 'isRunning', true),
+      ],
+      verify: (_) {
+        expect(mockService.lastEnvironment, {'DUCKDNS_TOKEN': 'duck-token'});
+      },
+    );
+
+    blocTest<CaddyBloc, CaddyState>(
+      'CaddyStart with no vault passes empty environment',
+      build: () => CaddyBloc(mockService),
+      act: (bloc) => bloc.add(const CaddyStart(CaddyConfig())),
+      expect: () => [
+        isA<CaddyState>().having((s) => s.isLoading, 'isLoading', true),
+        isA<CaddyState>().having((s) => s.isRunning, 'isRunning', true),
+      ],
+      verify: (_) {
+        expect(mockService.lastEnvironment, isEmpty);
+      },
+    );
+
+    blocTest<CaddyBloc, CaddyState>(
+      'CaddyLifecycleResume injects secrets on restart',
+      setUp: () async {
+        await mockVault.write(key: 'caddy_S3_ACCESS_KEY', value: 's3-key');
+      },
+      build: () => CaddyBloc(mockService, vault: mockVault),
+      seed: () => CaddyState.initial().copyWith(
+        status: CaddyRunning(config: '{}', startedAt: DateTime.now()),
+      ),
+      act: (bloc) async {
+        bloc.add(const CaddyLifecyclePause());
+        await Future<void>.delayed(const Duration(milliseconds: 50));
+        bloc.add(const CaddyLifecycleResume());
+      },
+      wait: const Duration(milliseconds: 100),
+      expect: () => [
+        isA<CaddyState>().having((s) => s.isStopped, 'isStopped', true),
+        isA<CaddyState>().having((s) => s.isLoading, 'isLoading', true),
+        isA<CaddyState>().having((s) => s.isRunning, 'isRunning', true),
+      ],
+      verify: (_) {
+        expect(mockService.lastEnvironment, {'S3_ACCESS_KEY': 's3-key'});
+      },
     );
   });
 }

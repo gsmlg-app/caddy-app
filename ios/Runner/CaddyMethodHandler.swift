@@ -29,6 +29,11 @@ class CaddyMethodHandler: NSObject {
             case "status":
                 let response = CaddyBridgeGetCaddyStatus()
                 DispatchQueue.main.async { result(response) }
+            case "setEnvironment":
+                let args = call.arguments as? [String: Any]
+                let env = args?["env"] as? String ?? "{}"
+                let response = CaddyBridgeSetEnvironment(env)
+                DispatchQueue.main.async { result(response) }
             default:
                 DispatchQueue.main.async { result(FlutterMethodNotImplemented) }
             }

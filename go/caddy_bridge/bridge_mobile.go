@@ -4,9 +4,23 @@ package caddy_bridge
 
 import (
 	"encoding/json"
+	"os"
 
 	"github.com/caddyserver/caddy/v2"
 )
+
+func SetEnvironment(envJSON string) string {
+	var env map[string]string
+	if err := json.Unmarshal([]byte(envJSON), &env); err != nil {
+		return err.Error()
+	}
+	for k, v := range env {
+		if err := os.Setenv(k, v); err != nil {
+			return err.Error()
+		}
+	}
+	return ""
+}
 
 func StartCaddy(configJSON string) string {
 	err := caddy.Load([]byte(configJSON), true)

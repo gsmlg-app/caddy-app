@@ -15,6 +15,9 @@ typedef _ReloadCaddyDart = Pointer<Utf8> Function(Pointer<Utf8> configJSON);
 typedef _GetCaddyStatusC = Pointer<Utf8> Function();
 typedef _GetCaddyStatusDart = Pointer<Utf8> Function();
 
+typedef _SetEnvironmentC = Pointer<Utf8> Function(Pointer<Utf8> envJSON);
+typedef _SetEnvironmentDart = Pointer<Utf8> Function(Pointer<Utf8> envJSON);
+
 class CaddyFfi {
   CaddyFfi() : _lib = _loadLibrary();
 
@@ -31,6 +34,9 @@ class CaddyFfi {
 
   late final _GetCaddyStatusDart _getCaddyStatus = _lib
       .lookupFunction<_GetCaddyStatusC, _GetCaddyStatusDart>('GetCaddyStatus');
+
+  late final _SetEnvironmentDart _setEnvironment = _lib
+      .lookupFunction<_SetEnvironmentC, _SetEnvironmentDart>('SetEnvironment');
 
   static DynamicLibrary _loadLibrary() {
     if (Platform.isLinux) {
@@ -71,5 +77,15 @@ class CaddyFfi {
   String status() {
     final resultPtr = _getCaddyStatus();
     return resultPtr.toDartString();
+  }
+
+  String setEnvironment(String envJSON) {
+    final envPtr = envJSON.toNativeUtf8();
+    try {
+      final resultPtr = _setEnvironment(envPtr);
+      return resultPtr.toDartString();
+    } finally {
+      calloc.free(envPtr);
+    }
   }
 }

@@ -14,6 +14,7 @@ dependencies:
     sdk: flutter
 
   app_database: any
+  app_secure_storage: any
   caddy_service: any
 
 dev_dependencies:

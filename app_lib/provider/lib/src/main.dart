@@ -84,6 +84,7 @@ class _AppBlocProviderState extends State<AppBlocProvider> {
     _caddyBloc = CaddyBloc(
       CaddyService.instance,
       database: context.read<AppDatabase>(),
+      vault: context.read<VaultRepository>(),
     );
     _caddyBloc.add(const CaddyLoadSavedConfig());
   }
