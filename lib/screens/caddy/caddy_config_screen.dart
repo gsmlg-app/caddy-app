@@ -528,17 +528,50 @@ class _SimpleConfigForm extends StatelessWidget {
   }
 }
 
-class _RawJsonEditor extends StatelessWidget {
+class _RawJsonEditor extends StatefulWidget {
   const _RawJsonEditor({required this.controller});
 
   final TextEditingController controller;
+
+  @override
+  State<_RawJsonEditor> createState() => _RawJsonEditorState();
+}
+
+class _RawJsonEditorState extends State<_RawJsonEditor> {
+  late final _JsonHighlightController _highlightController;
+
+  @override
+  void initState() {
+    super.initState();
+    _highlightController = _JsonHighlightController(widget.controller.text);
+    // Sync changes back to the parent controller.
+    _highlightController.addListener(() {
+      if (widget.controller.text != _highlightController.text) {
+        widget.controller.text = _highlightController.text;
+      }
+    });
+    widget.controller.addListener(_syncFromParent);
+  }
+
+  void _syncFromParent() {
+    if (_highlightController.text != widget.controller.text) {
+      _highlightController.text = widget.controller.text;
+    }
+  }
+
+  @override
+  void dispose() {
+    widget.controller.removeListener(_syncFromParent);
+    _highlightController.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
     return Padding(
       padding: const EdgeInsets.all(16),
       child: TextField(
-        controller: controller,
+        controller: _highlightController,
         maxLines: null,
         expands: true,
         style: const TextStyle(fontFamily: 'monospace', fontSize: 13),
@@ -549,6 +582,124 @@ class _RawJsonEditor extends StatelessWidget {
       ),
     );
   }
+}
+
+class _JsonHighlightController extends TextEditingController {
+  _JsonHighlightController(String text) : super(text: text);
+
+  static final _patterns = <_JsonPattern>[
+    // Strings (keys and values)
+    _JsonPattern(RegExp(r'"(?:[^"\\]|\\.)*"(?=\s*:)'), _TokenType.key),
+    _JsonPattern(RegExp(r'"(?:[^"\\]|\\.)*"'), _TokenType.string),
+    // Numbers
+    _JsonPattern(
+      RegExp(r'-?\b\d+(?:\.\d+)?(?:[eE][+-]?\d+)?\b'),
+      _TokenType.number,
+    ),
+    // Booleans and null
+    _JsonPattern(RegExp(r'\b(?:true|false|null)\b'), _TokenType.keyword),
+    // Braces and brackets
+    _JsonPattern(RegExp(r'[{}[\]]'), _TokenType.punctuation),
+  ];
+
+  @override
+  TextSpan buildTextSpan({
+    required BuildContext context,
+    TextStyle? style,
+    required bool withComposing,
+  }) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final colors = _JsonColors.from(isDark);
+    final src = text;
+    final spans = <TextSpan>[];
+    var pos = 0;
+
+    // Collect all matches sorted by position.
+    final matches = <_Match>[];
+    for (final pattern in _patterns) {
+      for (final m in pattern.regex.allMatches(src)) {
+        matches.add(_Match(m.start, m.end, pattern.type));
+      }
+    }
+    matches.sort((a, b) => a.start.compareTo(b.start));
+
+    for (final m in matches) {
+      if (m.start < pos) continue; // Skip overlapping matches.
+      if (m.start > pos) {
+        spans.add(TextSpan(text: src.substring(pos, m.start)));
+      }
+      spans.add(
+        TextSpan(
+          text: src.substring(m.start, m.end),
+          style: TextStyle(color: colors.colorFor(m.type)),
+        ),
+      );
+      pos = m.end;
+    }
+    if (pos < src.length) {
+      spans.add(TextSpan(text: src.substring(pos)));
+    }
+
+    return TextSpan(style: style, children: spans);
+  }
+}
+
+enum _TokenType { key, string, number, keyword, punctuation }
+
+class _JsonPattern {
+  const _JsonPattern(this.regex, this.type);
+  final RegExp regex;
+  final _TokenType type;
+}
+
+class _Match {
+  const _Match(this.start, this.end, this.type);
+  final int start;
+  final int end;
+  final _TokenType type;
+}
+
+class _JsonColors {
+  const _JsonColors({
+    required this.key,
+    required this.string,
+    required this.number,
+    required this.keyword,
+    required this.punctuation,
+  });
+
+  factory _JsonColors.from(bool isDark) {
+    if (isDark) {
+      return const _JsonColors(
+        key: Color(0xFF9CDCFE),
+        string: Color(0xFFCE9178),
+        number: Color(0xFFB5CEA8),
+        keyword: Color(0xFF569CD6),
+        punctuation: Color(0xFFD4D4D4),
+      );
+    }
+    return const _JsonColors(
+      key: Color(0xFF0451A5),
+      string: Color(0xFFA31515),
+      number: Color(0xFF098658),
+      keyword: Color(0xFF0000FF),
+      punctuation: Color(0xFF000000),
+    );
+  }
+
+  final Color key;
+  final Color string;
+  final Color number;
+  final Color keyword;
+  final Color punctuation;
+
+  Color colorFor(_TokenType type) => switch (type) {
+    _TokenType.key => key,
+    _TokenType.string => string,
+    _TokenType.number => number,
+    _TokenType.keyword => keyword,
+    _TokenType.punctuation => punctuation,
+  };
 }
 
 class _TlsSection extends StatelessWidget {
