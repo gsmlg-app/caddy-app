@@ -32,7 +32,13 @@ class CaddyScreen extends StatelessWidget {
         backgroundColor: Theme.of(context).colorScheme.primary,
       ),
       body: (context) => SafeArea(
-        child: BlocBuilder<CaddyBloc, CaddyState>(
+        child: BlocConsumer<CaddyBloc, CaddyState>(
+          listenWhen: (prev, curr) => !prev.hasError && curr.hasError,
+          listener: (context, state) {
+            if (state.status case CaddyError(message: final msg)) {
+              _showErrorRecoveryDialog(context, msg, state);
+            }
+          },
           builder: (context, state) {
             return SingleChildScrollView(
               padding: const EdgeInsets.all(16),
@@ -62,6 +68,66 @@ class CaddyScreen extends StatelessWidget {
       ),
     );
   }
+}
+
+void _showErrorRecoveryDialog(
+  BuildContext context,
+  String errorMessage,
+  CaddyState state,
+) {
+  final isPortInUse =
+      errorMessage.contains('already in use') || errorMessage.contains('bind:');
+
+  showDialog(
+    context: context,
+    builder: (dialogContext) {
+      return AlertDialog(
+        icon: Icon(
+          isPortInUse ? Icons.portable_wifi_off : Icons.error_outline,
+          color: Theme.of(dialogContext).colorScheme.error,
+          size: 48,
+        ),
+        title: Text(dialogContext.l10n.caddyErrorRecoveryTitle),
+        content: Text(
+          isPortInUse
+              ? dialogContext.l10n.caddyErrorPortInUse
+              : dialogContext.l10n.caddyErrorGeneric,
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(),
+            child: Text(dialogContext.l10n.caddyErrorDismiss),
+          ),
+          if (isPortInUse)
+            OutlinedButton.icon(
+              onPressed: () {
+                Navigator.of(dialogContext).pop();
+                context.goNamed(CaddyConfigScreen.name);
+              },
+              icon: const Icon(Icons.edit),
+              label: Text(dialogContext.l10n.caddyErrorChangePort),
+            ),
+          if (!isPortInUse)
+            OutlinedButton.icon(
+              onPressed: () {
+                Navigator.of(dialogContext).pop();
+                context.goNamed(CaddyLogScreen.name);
+              },
+              icon: const Icon(Icons.article),
+              label: Text(dialogContext.l10n.caddyErrorViewLogs),
+            ),
+          FilledButton.icon(
+            onPressed: () {
+              Navigator.of(dialogContext).pop();
+              context.read<CaddyBloc>().add(CaddyStart(state.config));
+            },
+            icon: const Icon(Icons.refresh),
+            label: Text(dialogContext.l10n.caddyErrorRetry),
+          ),
+        ],
+      );
+    },
+  );
 }
 
 class _StatusCard extends StatefulWidget {

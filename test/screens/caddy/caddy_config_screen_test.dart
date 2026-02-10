@@ -14,8 +14,7 @@ class MockCaddyService extends CaddyService {
     CaddyConfig config, {
     bool adminEnabled = false,
     Map<String, String> environment = const {},
-  }) async =>
-      CaddyRunning(config: '{}', startedAt: DateTime.now());
+  }) async => CaddyRunning(config: '{}', startedAt: DateTime.now());
 
   @override
   Future<CaddyStatus> stop() async => const CaddyStopped();
@@ -25,8 +24,7 @@ class MockCaddyService extends CaddyService {
     CaddyConfig config, {
     bool adminEnabled = false,
     Map<String, String> environment = const {},
-  }) async =>
-      CaddyRunning(config: '{}', startedAt: DateTime.now());
+  }) async => CaddyRunning(config: '{}', startedAt: DateTime.now());
 
   @override
   Future<CaddyStatus> getStatus() async => const CaddyStopped();
@@ -103,9 +101,7 @@ void main() {
       expect(find.byIcon(Icons.add), findsOneWidget);
     });
 
-    testWidgets('switching to raw JSON tab shows text editor', (
-      tester,
-    ) async {
+    testWidgets('switching to raw JSON tab shows text editor', (tester) async {
       await tester.pumpWidget(_buildTestWidget());
       await tester.pumpAndSettle();
 
@@ -186,9 +182,7 @@ void main() {
       // Enable TLS via bloc
       bloc.add(
         CaddyUpdateConfig(
-          bloc.state.config.copyWith(
-            tls: const CaddyTlsConfig(enabled: true),
-          ),
+          bloc.state.config.copyWith(tls: const CaddyTlsConfig(enabled: true)),
         ),
       );
       await tester.pumpAndSettle();
@@ -242,6 +236,80 @@ void main() {
 
       // Menu has HTTPS preset with lock icon
       expect(find.byIcon(Icons.lock), findsAtLeastNWidgets(1));
+    });
+
+    testWidgets('shows import button', (tester) async {
+      await tester.pumpWidget(_buildTestWidget());
+      await tester.pumpAndSettle();
+
+      expect(find.byIcon(Icons.file_upload), findsOneWidget);
+    });
+
+    testWidgets('shows export button', (tester) async {
+      await tester.pumpWidget(_buildTestWidget());
+      await tester.pumpAndSettle();
+
+      expect(find.byIcon(Icons.file_download), findsOneWidget);
+    });
+
+    testWidgets('shows copy button', (tester) async {
+      await tester.pumpWidget(_buildTestWidget());
+      await tester.pumpAndSettle();
+
+      expect(find.byIcon(Icons.copy), findsOneWidget);
+    });
+
+    testWidgets('shows routes section with count', (tester) async {
+      final service = MockCaddyService();
+      final bloc = CaddyBloc(service);
+      bloc.emit(
+        CaddyState.initial().copyWith(
+          config: CaddyConfig(
+            routes: [
+              const CaddyRoute(
+                path: '/test/*',
+                handler: StaticFileHandler(root: '/tmp'),
+              ),
+            ],
+          ),
+        ),
+      );
+
+      await tester.pumpWidget(_buildTestWidget(bloc: bloc));
+      await tester.pumpAndSettle();
+
+      expect(find.textContaining('Routes (1)'), findsOneWidget);
+      expect(find.text('/test/*'), findsOneWidget);
+      bloc.close();
+    });
+
+    testWidgets('remove route button deletes route', (tester) async {
+      final service = MockCaddyService();
+      final bloc = CaddyBloc(service);
+      bloc.emit(
+        CaddyState.initial().copyWith(
+          config: CaddyConfig(
+            routes: [
+              const CaddyRoute(
+                path: '/remove-me/*',
+                handler: StaticFileHandler(root: '/tmp'),
+              ),
+            ],
+          ),
+        ),
+      );
+
+      await tester.pumpWidget(_buildTestWidget(bloc: bloc));
+      await tester.pumpAndSettle();
+
+      expect(find.text('/remove-me/*'), findsOneWidget);
+
+      await tester.tap(find.byIcon(Icons.delete_outline));
+      await tester.pumpAndSettle();
+
+      expect(find.text('/remove-me/*'), findsNothing);
+      expect(bloc.state.config.routes, isEmpty);
+      bloc.close();
     });
   });
 }

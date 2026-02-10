@@ -150,6 +150,47 @@ class _CaddyConfigScreenState extends State<CaddyConfigScreen>
     }
   }
 
+  Future<void> _importConfig() async {
+    final data = await Clipboard.getData(Clipboard.kTextPlain);
+    final text = data?.text?.trim();
+    if (text == null || text.isEmpty) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              context.l10n.caddyConfigImportFailed('Clipboard is empty'),
+            ),
+          ),
+        );
+      }
+      return;
+    }
+    try {
+      final json = jsonDecode(text) as Map<String, dynamic>;
+      final config = CaddyConfig(rawJson: jsonEncode(json));
+      if (!mounted) return;
+      _listenController.text = config.listenAddress;
+      _rawJsonController.text = const JsonEncoder.withIndent(
+        '  ',
+      ).convert(json);
+      context.read<CaddyBloc>().add(CaddyUpdateConfig(config));
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(context.l10n.caddyConfigImported)),
+      );
+    } on FormatException {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              context.l10n.caddyConfigImportFailed('Not valid JSON'),
+            ),
+            backgroundColor: Theme.of(context).colorScheme.error,
+          ),
+        );
+      }
+    }
+  }
+
   void _showSaveAsDialog() {
     final nameController = TextEditingController();
     showDialog(
@@ -298,6 +339,11 @@ class _CaddyConfigScreenState extends State<CaddyConfigScreen>
               icon: const Icon(Icons.file_download),
               tooltip: context.l10n.caddyConfigExport,
               onPressed: _exportConfig,
+            ),
+            IconButton(
+              icon: const Icon(Icons.file_upload),
+              tooltip: context.l10n.caddyConfigImport,
+              onPressed: _importConfig,
             ),
             BlocBuilder<CaddyBloc, CaddyState>(
               buildWhen: (prev, curr) =>

@@ -178,6 +178,23 @@
     }
   },
   "caddyConfigExportFailed": "Failed to export config",
+  "caddyConfigImport": "Import Config",
+  "caddyConfigImported": "Config imported successfully",
+  "caddyConfigImportFailed": "Failed to import config: {error}",
+  "@caddyConfigImportFailed": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "caddyErrorRecoveryTitle": "Server Error",
+  "caddyErrorPortInUse": "The port is already in use by another application. Try a different port or stop the other application.",
+  "caddyErrorGeneric": "An error occurred while managing the Caddy server. Check the logs for details.",
+  "caddyErrorDismiss": "Dismiss",
+  "caddyErrorChangePort": "Change Port",
+  "caddyErrorRetry": "Retry",
+  "caddyErrorViewLogs": "View Logs",
   "caddyAutoRestart": "Auto-restart on Resume",
   "caddyAutoRestartEnabled": "Caddy will restart when app is resumed",
   "caddyAutoRestartDisabled": "Caddy will stay stopped after resume",

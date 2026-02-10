@@ -165,5 +165,101 @@ void main() {
       expect(find.text('VISIBLE'), findsOneWidget);
       expect(find.text('HIDDEN'), findsNothing);
     });
+
+    testWidgets('delete confirmation removes secret from list', (tester) async {
+      final vault = MockVaultRepository();
+      await vault.write(key: 'caddy_TO_DELETE', value: 'val');
+
+      await tester.pumpWidget(_buildTestWidget(vault: vault));
+      await tester.pumpAndSettle();
+
+      expect(find.text('TO_DELETE'), findsOneWidget);
+
+      // Tap delete icon
+      await tester.tap(find.byIcon(Icons.delete_outline));
+      await tester.pumpAndSettle();
+
+      // Confirm deletion
+      await tester.tap(find.text('Delete Secret').last);
+      await tester.pumpAndSettle();
+
+      expect(find.text('TO_DELETE'), findsNothing);
+    });
+
+    testWidgets('cancel delete does not remove secret', (tester) async {
+      final vault = MockVaultRepository();
+      await vault.write(key: 'caddy_KEEP_ME', value: 'val');
+
+      await tester.pumpWidget(_buildTestWidget(vault: vault));
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.byIcon(Icons.delete_outline));
+      await tester.pumpAndSettle();
+
+      // Cancel
+      await tester.tap(find.text('Cancel'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('KEEP_ME'), findsOneWidget);
+    });
+
+    testWidgets('multiple secrets shown with correct count', (tester) async {
+      final vault = MockVaultRepository();
+      await vault.write(key: 'caddy_SECRET_1', value: 'v1');
+      await vault.write(key: 'caddy_SECRET_2', value: 'v2');
+      await vault.write(key: 'caddy_SECRET_3', value: 'v3');
+
+      await tester.pumpWidget(_buildTestWidget(vault: vault));
+      await tester.pumpAndSettle();
+
+      expect(find.text('SECRET_1'), findsOneWidget);
+      expect(find.text('SECRET_2'), findsOneWidget);
+      expect(find.text('SECRET_3'), findsOneWidget);
+      expect(find.byIcon(Icons.key), findsNWidgets(3));
+    });
+
+    testWidgets('quick add chips show check icon for existing secrets', (
+      tester,
+    ) async {
+      final vault = MockVaultRepository();
+      await vault.write(key: 'caddy_CF_API_TOKEN', value: 'exists');
+
+      await tester.pumpWidget(_buildTestWidget(vault: vault));
+      await tester.pumpAndSettle();
+
+      // CF_API_TOKEN exists, so its chip should show check_circle
+      expect(find.byIcon(Icons.check_circle), findsAtLeastNWidgets(1));
+      // Other chips should show add_circle_outline
+      expect(find.byIcon(Icons.add_circle_outline), findsAtLeastNWidgets(1));
+    });
+
+    testWidgets('description text shown when secrets exist', (tester) async {
+      final vault = MockVaultRepository();
+      await vault.write(key: 'caddy_SOMETHING', value: 'val');
+
+      await tester.pumpWidget(_buildTestWidget(vault: vault));
+      await tester.pumpAndSettle();
+
+      expect(
+        find.text('Manage API tokens and credentials for Caddy modules'),
+        findsOneWidget,
+      );
+    });
+
+    testWidgets('empty add dialog does not save', (tester) async {
+      await tester.pumpWidget(_buildTestWidget());
+      await tester.pumpAndSettle();
+
+      // Open add dialog
+      await tester.tap(find.byIcon(Icons.add).first);
+      await tester.pumpAndSettle();
+
+      // Try to save without entering anything
+      await tester.tap(find.text('Save'));
+      await tester.pumpAndSettle();
+
+      // Dialog should still be open (save didn't happen because key/value empty)
+      expect(find.byType(AlertDialog), findsOneWidget);
+    });
   });
 }
