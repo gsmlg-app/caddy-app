@@ -332,6 +332,7 @@ void main() {
         CaddyConfigPresets.spaServer(),
         CaddyConfigPresets.apiGateway(),
         CaddyConfigPresets.httpsWithDns(),
+        CaddyConfigPresets.httpsWithS3(),
       ];
 
       for (final preset in presets) {
