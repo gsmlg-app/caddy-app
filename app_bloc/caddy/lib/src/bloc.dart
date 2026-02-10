@@ -31,6 +31,7 @@ class CaddyBloc extends Bloc<CaddyEvent, CaddyState> {
     on<CaddySaveConfig>(_onSaveConfig);
     on<CaddyDeleteSavedConfig>(_onDeleteSavedConfig);
     on<CaddyLoadNamedConfig>(_onLoadNamedConfig);
+    on<CaddyInitialize>(_onInitialize);
 
     _logSubscription = _service.logStream.listen(
       (line) => add(CaddyLogReceived(line)),
@@ -237,6 +238,44 @@ class CaddyBloc extends Bloc<CaddyEvent, CaddyState> {
         activeConfigName: event.name,
       ),
     );
+  }
+
+  /// Checks Caddy status at initialization to detect orphaned instances
+  /// from unclean shutdowns. If Caddy is found already running, it is
+  /// stopped to ensure a clean state. Also loads saved configs from DB.
+  Future<void> _onInitialize(
+    CaddyInitialize event,
+    Emitter<CaddyState> emit,
+  ) async {
+    final status = await _service.getStatus();
+    if (status is CaddyRunning) {
+      // Orphaned Caddy instance detected — stop it for a clean start.
+      await _service.stop();
+    }
+
+    // Load saved configs from database.
+    final db = _database;
+    if (db != null) {
+      final configs = await db.getAllCaddyConfigs();
+      final names = configs.map((c) => c.name).toList();
+      final active = configs.where((c) => c.isActive).firstOrNull;
+
+      if (active != null) {
+        final config = CaddyConfig.fromJson(
+          jsonDecode(active.configJson) as Map<String, dynamic>,
+        );
+        emit(
+          state.copyWith(
+            config: config,
+            adminEnabled: active.adminEnabled,
+            savedConfigNames: names,
+            activeConfigName: active.name,
+          ),
+        );
+      } else {
+        emit(state.copyWith(savedConfigNames: names));
+      }
+    }
   }
 
   @override

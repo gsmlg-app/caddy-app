@@ -24,6 +24,9 @@ class MockCaddyService extends CaddyService {
   /// Captures the environment passed to start/reload for verification.
   Map<String, String> lastEnvironment = {};
 
+  /// Tracks whether stop was called (for crash recovery tests).
+  bool stopCalled = false;
+
   @override
   Future<CaddyStatus> start(
     CaddyConfig config, {
@@ -35,7 +38,10 @@ class MockCaddyService extends CaddyService {
   }
 
   @override
-  Future<CaddyStatus> stop() async => stopResult;
+  Future<CaddyStatus> stop() async {
+    stopCalled = true;
+    return stopResult;
+  }
 
   @override
   Future<CaddyStatus> reload(
@@ -449,6 +455,94 @@ void main() {
       build: () => CaddyBloc(mockService),
       act: (bloc) => bloc.add(const CaddySaveConfig('test')),
       expect: () => [],
+    );
+  });
+
+  group('Crash recovery', () {
+    late AppDatabase db;
+
+    blocTest<CaddyBloc, CaddyState>(
+      'CaddyInitialize stops orphaned Caddy instance',
+      build: () {
+        mockService.statusResult = CaddyRunning(
+          config: '{}',
+          startedAt: DateTime(2024),
+        );
+        return CaddyBloc(mockService);
+      },
+      act: (bloc) => bloc.add(const CaddyInitialize()),
+      verify: (bloc) {
+        expect(mockService.stopCalled, isTrue);
+        expect(bloc.state.isStopped, isTrue);
+      },
+    );
+
+    blocTest<CaddyBloc, CaddyState>(
+      'CaddyInitialize does not stop when Caddy is not running',
+      build: () {
+        mockService.statusResult = const CaddyStopped();
+        return CaddyBloc(mockService);
+      },
+      act: (bloc) => bloc.add(const CaddyInitialize()),
+      verify: (bloc) {
+        expect(mockService.stopCalled, isFalse);
+      },
+    );
+
+    blocTest<CaddyBloc, CaddyState>(
+      'CaddyInitialize loads saved configs from database',
+      build: () => CaddyBloc(mockService, database: db),
+      setUp: () async {
+        db = AppDatabase.forTesting();
+        await db.upsertCaddyConfig(
+          name: 'init-config',
+          configJson: jsonEncode(
+            const CaddyConfig(listenAddress: 'localhost:5000').toStorageJson(),
+          ),
+          adminEnabled: true,
+          isActive: true,
+        );
+      },
+      act: (bloc) => bloc.add(const CaddyInitialize()),
+      verify: (bloc) {
+        expect(bloc.state.config.listenAddress, 'localhost:5000');
+        expect(bloc.state.adminEnabled, isTrue);
+        expect(bloc.state.savedConfigNames, contains('init-config'));
+        expect(bloc.state.activeConfigName, 'init-config');
+      },
+      tearDown: () async {
+        await db.close();
+      },
+    );
+
+    blocTest<CaddyBloc, CaddyState>(
+      'CaddyInitialize cleans up orphan then loads config',
+      build: () {
+        mockService.statusResult = CaddyRunning(
+          config: '{}',
+          startedAt: DateTime(2024),
+        );
+        return CaddyBloc(mockService, database: db);
+      },
+      setUp: () async {
+        db = AppDatabase.forTesting();
+        await db.upsertCaddyConfig(
+          name: 'recovered',
+          configJson: jsonEncode(
+            const CaddyConfig(listenAddress: 'localhost:7777').toStorageJson(),
+          ),
+          isActive: true,
+        );
+      },
+      act: (bloc) => bloc.add(const CaddyInitialize()),
+      verify: (bloc) {
+        expect(mockService.stopCalled, isTrue);
+        expect(bloc.state.config.listenAddress, 'localhost:7777');
+        expect(bloc.state.activeConfigName, 'recovered');
+      },
+      tearDown: () async {
+        await db.close();
+      },
     );
   });
 

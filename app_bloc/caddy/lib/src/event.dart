@@ -85,3 +85,10 @@ final class CaddyLoadNamedConfig extends CaddyEvent {
 
   final String name;
 }
+
+/// Checks Caddy status on startup to detect unclean shutdowns.
+/// If Caddy is found running without the app having started it,
+/// the orphaned instance is stopped.
+final class CaddyInitialize extends CaddyEvent {
+  const CaddyInitialize();
+}

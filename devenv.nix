@@ -17,6 +17,7 @@ in
     pkgs-stable.inotify-tools
     pkgs-stable.go
     pkgs-stable.gomobile
+    pkgs-stable.xcaddy
     pkgs-stable.gnumake
   ];
 
