@@ -11,7 +11,7 @@ void main() {
     ];
 
     testWidgets('creates checkbox group tile with required properties', (tester) async {
-      Set<String>? capturedValues;
+      Set<String>? capturedValues; // ignore: unused_local_variable
 
       await tester.pumpWidget(
         MaterialApp(

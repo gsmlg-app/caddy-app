@@ -5,7 +5,7 @@ import 'package:settings_ui/settings_ui.dart';
 void main() {
   group('SettingsTile.textarea', () {
     testWidgets('creates textarea tile with required properties', (tester) async {
-      String? capturedValue;
+      String? capturedValue; // ignore: unused_local_variable
 
       await tester.pumpWidget(
         MaterialApp(

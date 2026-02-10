@@ -15,11 +15,16 @@ include: package:lints/recommended.yaml
 
 # Uncomment the following section to specify additional rules.
 
-# linter:
-#   rules:
-#     - camel_case_types
+linter:
+  rules:
+    # Disable style lints for third-party vendored code
+    prefer_initializing_formals: false
+    unnecessary_this: false
 
-# analyzer:
+analyzer:
+  errors:
+    # Ignore deprecated API usage in third-party vendored code
+    deprecated_member_use: ignore
 #   exclude:
 #     - path/to/excluded/files/**
 

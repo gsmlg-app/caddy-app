@@ -11,7 +11,7 @@ void main() {
     ];
 
     testWidgets('creates select tile with required properties', (tester) async {
-      String? capturedValue;
+      String? capturedValue; // ignore: unused_local_variable
 
       await tester.pumpWidget(
         MaterialApp(

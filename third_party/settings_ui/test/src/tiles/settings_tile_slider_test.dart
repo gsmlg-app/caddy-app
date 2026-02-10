@@ -5,7 +5,7 @@ import 'package:settings_ui/settings_ui.dart';
 void main() {
   group('SettingsTile.slider', () {
     testWidgets('creates slider tile with required properties', (tester) async {
-      double? capturedValue;
+      double? capturedValue; // ignore: unused_local_variable
 
       await tester.pumpWidget(
         MaterialApp(
