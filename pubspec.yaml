@@ -9,13 +9,12 @@ environment:
 
 workspace:
   - app_lib/database
-  - app_lib/gamepad
   - app_lib/theme
   - app_lib/locale
   - app_lib/provider
   - app_lib/logging
   - app_lib/secure_storage
-  - app_bloc/gamepad
+  - app_bloc/error_handler
   - app_bloc/navigation
   - app_bloc/theme
   - app_widget/adaptive
@@ -62,11 +61,9 @@ dependencies:
 
   # workspace packages
   app_database: any
-  app_gamepad: any
   app_theme: any
   app_locale: any
   app_provider: any
-  gamepad_bloc: any
   nav_bloc: any
   theme_bloc: any
   app_artwork: any
@@ -82,6 +79,7 @@ dependencies:
   flutter_form_bloc: any
   caddy_service: any
   caddy_bloc: any
+  error_handler_bloc: any
 
 dev_dependencies:
   flutter_test:
