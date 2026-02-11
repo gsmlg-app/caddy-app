@@ -99,11 +99,85 @@ class _CaddyConfigScreenState extends State<CaddyConfigScreen>
   }
 
   void _applyConfig() {
-    _saveConfig();
+    final config = _buildConfig();
+    final error = CaddyConfigPresets.validate(config);
+    if (error != null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(context.l10n.caddyConfigInvalid(error)),
+          backgroundColor: Theme.of(context).colorScheme.error,
+        ),
+      );
+      return;
+    }
+
     final bloc = context.read<CaddyBloc>();
     if (bloc.state.isRunning) {
-      bloc.add(CaddyReload(bloc.state.config));
+      _showDiffDialog(context, bloc.state.config, config);
+    } else {
+      bloc.add(CaddyUpdateConfig(config));
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(context.l10n.success)));
     }
+  }
+
+  void _showDiffDialog(
+    BuildContext context,
+    CaddyConfig currentConfig,
+    CaddyConfig newConfig,
+  ) {
+    final currentJson = const JsonEncoder.withIndent(
+      '  ',
+    ).convert(currentConfig.toJson());
+    final newJson = const JsonEncoder.withIndent(
+      '  ',
+    ).convert(newConfig.toJson());
+
+    showDialog(
+      context: context,
+      builder: (dialogContext) {
+        return AlertDialog(
+          title: Text(dialogContext.l10n.caddyConfigDiffTitle),
+          content: SizedBox(
+            width: double.maxFinite,
+            height: 400,
+            child: currentJson == newJson
+                ? Center(
+                    child: Text(
+                      dialogContext.l10n.caddyConfigDiffNoChanges,
+                      style: Theme.of(dialogContext).textTheme.bodyLarge,
+                    ),
+                  )
+                : _ConfigDiffView(
+                    currentJson: currentJson,
+                    newJson: newJson,
+                    currentLabel: dialogContext.l10n.caddyConfigDiffCurrent,
+                    newLabel: dialogContext.l10n.caddyConfigDiffNew,
+                  ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(dialogContext).pop(),
+              child: Text(dialogContext.l10n.cancel),
+            ),
+            if (currentJson != newJson)
+              FilledButton.icon(
+                onPressed: () {
+                  Navigator.of(dialogContext).pop();
+                  context.read<CaddyBloc>().add(CaddyUpdateConfig(newConfig));
+                  context.read<CaddyBloc>().add(CaddyReload(newConfig));
+                  ScaffoldMessenger.of(
+                    context,
+                  ).showSnackBar(SnackBar(content: Text(context.l10n.success)));
+                },
+                icon: const Icon(Icons.check),
+                label: Text(dialogContext.l10n.caddyConfigDiffApply),
+              ),
+          ],
+        );
+      },
+    );
   }
 
   void _loadPreset(CaddyConfig preset) {
@@ -174,9 +248,9 @@ class _CaddyConfigScreenState extends State<CaddyConfigScreen>
         '  ',
       ).convert(json);
       context.read<CaddyBloc>().add(CaddyUpdateConfig(config));
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(context.l10n.caddyConfigImported)),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(context.l10n.caddyConfigImported)));
     } on FormatException {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -483,16 +557,16 @@ class _SimpleConfigForm extends StatelessWidget {
     );
   }
 
-  void _showAddRouteDialog(BuildContext context) {
+  void _showAddRouteDialog(BuildContext parentContext) {
     final pathController = TextEditingController(text: '/*');
     final valueController = TextEditingController();
     var isStaticFile = true;
 
     showDialog(
-      context: context,
+      context: parentContext,
       builder: (dialogContext) {
         return StatefulBuilder(
-          builder: (context, setDialogState) {
+          builder: (_, setDialogState) {
             return AlertDialog(
               title: Text(dialogContext.l10n.caddyAddRoute),
               content: Column(
@@ -546,7 +620,7 @@ class _SimpleConfigForm extends StatelessWidget {
                 ),
                 FilledButton(
                   onPressed: () {
-                    final bloc = dialogContext.read<CaddyBloc>();
+                    final bloc = parentContext.read<CaddyBloc>();
                     final handler = isStaticFile
                         ? StaticFileHandler(root: valueController.text)
                         : ReverseProxyHandler(upstreams: [valueController.text])
@@ -851,6 +925,167 @@ class _TlsSection extends StatelessWidget {
       ],
     );
   }
+}
+
+class _ConfigDiffView extends StatelessWidget {
+  const _ConfigDiffView({
+    required this.currentJson,
+    required this.newJson,
+    required this.currentLabel,
+    required this.newLabel,
+  });
+
+  final String currentJson;
+  final String newJson;
+  final String currentLabel;
+  final String newLabel;
+
+  @override
+  Widget build(BuildContext context) {
+    final currentLines = currentJson.split('\n');
+    final newLines = newJson.split('\n');
+    final diffLines = _computeDiff(currentLines, newLines);
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            _DiffLegendChip(
+              color: Colors.red.withValues(alpha: 0.15),
+              label: '- $currentLabel',
+            ),
+            const SizedBox(width: 12),
+            _DiffLegendChip(
+              color: Colors.green.withValues(alpha: 0.15),
+              label: '+ $newLabel',
+            ),
+          ],
+        ),
+        const SizedBox(height: 8),
+        Expanded(
+          child: Container(
+            decoration: BoxDecoration(
+              border: Border.all(
+                color: Theme.of(context).colorScheme.outlineVariant,
+              ),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: ListView.builder(
+              itemCount: diffLines.length,
+              padding: const EdgeInsets.all(8),
+              itemBuilder: (context, index) {
+                final diff = diffLines[index];
+                final (bg, prefix) = switch (diff.type) {
+                  _DiffType.removed => (
+                    Colors.red.withValues(alpha: 0.15),
+                    '- ',
+                  ),
+                  _DiffType.added => (
+                    Colors.green.withValues(alpha: 0.15),
+                    '+ ',
+                  ),
+                  _DiffType.unchanged => (null as Color?, '  '),
+                };
+                return Container(
+                  color: bg,
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 4,
+                    vertical: 1,
+                  ),
+                  child: Text(
+                    '$prefix${diff.text}',
+                    style: TextStyle(
+                      fontFamily: 'monospace',
+                      fontSize: 12,
+                      color: diff.type == _DiffType.removed
+                          ? Colors.red.shade700
+                          : diff.type == _DiffType.added
+                          ? Colors.green.shade700
+                          : null,
+                    ),
+                  ),
+                );
+              },
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  /// Simple line-based diff using longest common subsequence.
+  static List<_DiffLine> _computeDiff(
+    List<String> oldLines,
+    List<String> newLines,
+  ) {
+    // Build LCS table
+    final m = oldLines.length;
+    final n = newLines.length;
+    final lcs = List.generate(m + 1, (_) => List.filled(n + 1, 0));
+
+    for (var i = 1; i <= m; i++) {
+      for (var j = 1; j <= n; j++) {
+        if (oldLines[i - 1] == newLines[j - 1]) {
+          lcs[i][j] = lcs[i - 1][j - 1] + 1;
+        } else {
+          lcs[i][j] = lcs[i - 1][j] > lcs[i][j - 1]
+              ? lcs[i - 1][j]
+              : lcs[i][j - 1];
+        }
+      }
+    }
+
+    // Backtrack to build diff
+    final result = <_DiffLine>[];
+    var i = m;
+    var j = n;
+    while (i > 0 || j > 0) {
+      if (i > 0 && j > 0 && oldLines[i - 1] == newLines[j - 1]) {
+        result.add(_DiffLine(oldLines[i - 1], _DiffType.unchanged));
+        i--;
+        j--;
+      } else if (j > 0 && (i == 0 || lcs[i][j - 1] >= lcs[i - 1][j])) {
+        result.add(_DiffLine(newLines[j - 1], _DiffType.added));
+        j--;
+      } else {
+        result.add(_DiffLine(oldLines[i - 1], _DiffType.removed));
+        i--;
+      }
+    }
+
+    return result.reversed.toList();
+  }
+}
+
+class _DiffLegendChip extends StatelessWidget {
+  const _DiffLegendChip({required this.color, required this.label});
+
+  final Color color;
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      decoration: BoxDecoration(
+        color: color,
+        borderRadius: BorderRadius.circular(4),
+      ),
+      child: Text(
+        label,
+        style: const TextStyle(fontFamily: 'monospace', fontSize: 12),
+      ),
+    );
+  }
+}
+
+enum _DiffType { removed, added, unchanged }
+
+class _DiffLine {
+  const _DiffLine(this.text, this.type);
+  final String text;
+  final _DiffType type;
 }
 
 class _S3StorageSection extends StatelessWidget {

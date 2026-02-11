@@ -128,10 +128,7 @@ void main() {
         const config = CaddyConfig(listenAddress: 'localhost:8080');
         final status = await service.start(config);
         expect(status, isA<CaddyError>());
-        expect(
-          (status as CaddyError).message,
-          contains('already in use'),
-        );
+        expect((status as CaddyError).message, contains('already in use'));
       });
 
       test('returns CaddyError with bind error', () async {
@@ -177,10 +174,7 @@ void main() {
         const config = CaddyConfig(listenAddress: 'localhost:8080');
         final status = await service.reload(config);
         expect(status, isA<CaddyError>());
-        expect(
-          (status as CaddyError).message,
-          contains('already in use'),
-        );
+        expect((status as CaddyError).message, contains('already in use'));
       });
 
       test('returns CaddyError for generic errors', () async {
@@ -267,6 +261,107 @@ void main() {
         service.startError = null;
         final success = await service.start(config);
         expect(success, isA<CaddyRunning>());
+      });
+    });
+
+    group('exception handling', () {
+      test('start throws on FFI crash', () async {
+        service.throwOnStart = true;
+        const config = CaddyConfig();
+        expect(
+          () => service.start(config),
+          throwsA(
+            isA<Exception>().having(
+              (e) => e.toString(),
+              'message',
+              contains('FFI crash'),
+            ),
+          ),
+        );
+      });
+
+      test('stop throws on FFI crash', () async {
+        service.throwOnStop = true;
+        expect(
+          () => service.stop(),
+          throwsA(
+            isA<Exception>().having(
+              (e) => e.toString(),
+              'message',
+              contains('FFI crash'),
+            ),
+          ),
+        );
+      });
+
+      test('reload throws on FFI crash', () async {
+        service.throwOnReload = true;
+        const config = CaddyConfig();
+        expect(
+          () => service.reload(config),
+          throwsA(
+            isA<Exception>().having(
+              (e) => e.toString(),
+              'message',
+              contains('FFI crash'),
+            ),
+          ),
+        );
+      });
+
+      test('getStatus throws on FFI crash', () async {
+        service.throwOnStatus = true;
+        expect(
+          () => service.getStatus(),
+          throwsA(
+            isA<Exception>().having(
+              (e) => e.toString(),
+              'message',
+              contains('FFI crash'),
+            ),
+          ),
+        );
+      });
+    });
+
+    group('environment', () {
+      test('start passes environment variables', () async {
+        const config = CaddyConfig();
+        final env = {'CF_API_TOKEN': 'test-token'};
+        final status = await service.start(config, environment: env);
+        expect(status, isA<CaddyRunning>());
+      });
+
+      test('reload passes environment variables', () async {
+        const config = CaddyConfig();
+        final env = {'S3_ACCESS_KEY': 'key-123'};
+        final status = await service.reload(config, environment: env);
+        expect(status, isA<CaddyRunning>());
+      });
+
+      test('start with empty environment succeeds', () async {
+        const config = CaddyConfig();
+        final status = await service.start(config, environment: {});
+        expect(status, isA<CaddyRunning>());
+      });
+    });
+
+    group('dispose', () {
+      test('close test log controller completes cleanly', () async {
+        // Ensure log controller can be closed without error
+        await service.closeTestLog();
+        // Further emissions should not throw
+      });
+
+      test('log messages are recorded in order', () {
+        service.addLog('first');
+        service.addLog('second');
+        service.addLog('third');
+
+        expect(
+          service.logMessages,
+          orderedEquals(['first', 'second', 'third']),
+        );
       });
     });
   });

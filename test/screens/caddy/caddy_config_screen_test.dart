@@ -522,4 +522,296 @@ void main() {
       bloc.close();
     });
   });
+
+  group('Add route dialog', () {
+    testWidgets('add route button opens dialog with default path', (
+      tester,
+    ) async {
+      await tester.pumpWidget(_buildTestWidget());
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.byIcon(Icons.add));
+      await tester.pumpAndSettle();
+
+      expect(find.byType(AlertDialog), findsOneWidget);
+      expect(find.text('Add Route'), findsAtLeastNWidgets(1));
+      // Default path should be /*
+      final pathField = find.widgetWithText(TextField, 'Route Path');
+      expect(pathField, findsOneWidget);
+      final pathTextField = tester.widget<TextField>(pathField);
+      expect(pathTextField.controller?.text, '/*');
+    });
+
+    testWidgets(
+      'add route dialog has static files and reverse proxy segments',
+      (tester) async {
+        await tester.pumpWidget(_buildTestWidget());
+        await tester.pumpAndSettle();
+
+        await tester.tap(find.byIcon(Icons.add));
+        await tester.pumpAndSettle();
+
+        expect(find.text('Static Files'), findsOneWidget);
+        expect(find.text('Reverse Proxy'), findsOneWidget);
+        expect(find.byType(SegmentedButton<bool>), findsOneWidget);
+      },
+    );
+
+    testWidgets('add static file route creates route in bloc', (tester) async {
+      final service = MockCaddyService();
+      final bloc = CaddyBloc(service);
+
+      await tester.pumpWidget(_buildTestWidget(bloc: bloc));
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.byIcon(Icons.add));
+      await tester.pumpAndSettle();
+
+      // Fill in the route path
+      final pathField = find.widgetWithText(TextField, 'Route Path');
+      await tester.enterText(pathField, '/api/*');
+
+      // Fill in file root (Static Files is selected by default)
+      final rootField = find.widgetWithText(TextField, 'File Root Directory');
+      await tester.enterText(rootField, '/var/www');
+
+      // Tap OK
+      await tester.tap(find.text('OK'));
+      await tester.pumpAndSettle();
+
+      // Dialog should close and route should be added
+      expect(find.byType(AlertDialog), findsNothing);
+      expect(bloc.state.config.routes, hasLength(1));
+      expect(bloc.state.config.routes.first.path, '/api/*');
+      expect(bloc.state.config.routes.first.handler, isA<StaticFileHandler>());
+      bloc.close();
+    });
+
+    testWidgets('add reverse proxy route creates route in bloc', (
+      tester,
+    ) async {
+      final service = MockCaddyService();
+      final bloc = CaddyBloc(service);
+
+      await tester.pumpWidget(_buildTestWidget(bloc: bloc));
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.byIcon(Icons.add));
+      await tester.pumpAndSettle();
+
+      // Fill in the route path
+      final pathField = find.widgetWithText(TextField, 'Route Path');
+      await tester.enterText(pathField, '/proxy/*');
+
+      // Switch to Reverse Proxy
+      await tester.tap(find.text('Reverse Proxy'));
+      await tester.pumpAndSettle();
+
+      // Fill in upstream address
+      final upstreamField = find.widgetWithText(TextField, 'Upstream Address');
+      await tester.enterText(upstreamField, 'localhost:3000');
+
+      // Tap OK
+      await tester.tap(find.text('OK'));
+      await tester.pumpAndSettle();
+
+      expect(find.byType(AlertDialog), findsNothing);
+      expect(bloc.state.config.routes, hasLength(1));
+      expect(bloc.state.config.routes.first.path, '/proxy/*');
+      expect(
+        bloc.state.config.routes.first.handler,
+        isA<ReverseProxyHandler>(),
+      );
+      final handler =
+          bloc.state.config.routes.first.handler as ReverseProxyHandler;
+      expect(handler.upstreams, ['localhost:3000']);
+      bloc.close();
+    });
+
+    testWidgets('cancel button in add route dialog does not add route', (
+      tester,
+    ) async {
+      final service = MockCaddyService();
+      final bloc = CaddyBloc(service);
+
+      await tester.pumpWidget(_buildTestWidget(bloc: bloc));
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.byIcon(Icons.add));
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.text('Cancel'));
+      await tester.pumpAndSettle();
+
+      expect(find.byType(AlertDialog), findsNothing);
+      expect(bloc.state.config.routes, isEmpty);
+      bloc.close();
+    });
+  });
+
+  group('Validate and save feedback', () {
+    testWidgets('validate shows green snackbar for valid config', (
+      tester,
+    ) async {
+      await tester.pumpWidget(_buildTestWidget());
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.text('Validate'));
+      await tester.pumpAndSettle();
+
+      final snackBar = tester.widget<SnackBar>(find.byType(SnackBar));
+      expect(snackBar.backgroundColor, Colors.green);
+    });
+
+    testWidgets('validate shows error snackbar for invalid raw JSON', (
+      tester,
+    ) async {
+      await tester.pumpWidget(_buildTestWidget());
+      await tester.pumpAndSettle();
+
+      // Switch to raw JSON tab
+      await tester.tap(find.text('Raw JSON'));
+      await tester.pumpAndSettle();
+
+      // Enter invalid JSON
+      final textField = find.byType(TextField);
+      await tester.enterText(textField, '{ invalid json }');
+
+      await tester.tap(find.text('Validate'));
+      await tester.pumpAndSettle();
+
+      expect(find.byType(SnackBar), findsOneWidget);
+    });
+
+    testWidgets('save shows success snackbar', (tester) async {
+      await tester.pumpWidget(_buildTestWidget());
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.text('Save'));
+      await tester.pumpAndSettle();
+
+      expect(find.byType(SnackBar), findsOneWidget);
+      expect(find.text('Success'), findsAtLeastNWidgets(1));
+    });
+
+    testWidgets('apply without server running shows success snackbar', (
+      tester,
+    ) async {
+      await tester.pumpWidget(_buildTestWidget());
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.text('Apply'));
+      await tester.pumpAndSettle();
+
+      expect(find.byType(SnackBar), findsOneWidget);
+      expect(find.text('Success'), findsAtLeastNWidgets(1));
+    });
+  });
+
+  group('Preset loading', () {
+    testWidgets('selecting static file preset updates config', (tester) async {
+      final service = MockCaddyService();
+      final bloc = CaddyBloc(service);
+
+      await tester.pumpWidget(_buildTestWidget(bloc: bloc));
+      await tester.pumpAndSettle();
+
+      // Open preset menu
+      await tester.tap(find.byIcon(Icons.snippet_folder));
+      await tester.pumpAndSettle();
+
+      // Tap static file preset (first item with folder icon)
+      await tester.tap(find.byIcon(Icons.folder).last);
+      await tester.pumpAndSettle();
+
+      // Config should be updated with static file preset
+      expect(bloc.state.config.routes, isNotEmpty);
+      expect(bloc.state.config.routes.first.handler, isA<StaticFileHandler>());
+      bloc.close();
+    });
+
+    testWidgets('selecting reverse proxy preset updates config', (
+      tester,
+    ) async {
+      final service = MockCaddyService();
+      final bloc = CaddyBloc(service);
+
+      await tester.pumpWidget(_buildTestWidget(bloc: bloc));
+      await tester.pumpAndSettle();
+
+      // Open preset menu
+      await tester.tap(find.byIcon(Icons.snippet_folder));
+      await tester.pumpAndSettle();
+
+      // Tap reverse proxy preset
+      await tester.tap(find.byIcon(Icons.swap_horiz).last);
+      await tester.pumpAndSettle();
+
+      expect(bloc.state.config.routes, isNotEmpty);
+      expect(
+        bloc.state.config.routes.first.handler,
+        isA<ReverseProxyHandler>(),
+      );
+      bloc.close();
+    });
+
+    testWidgets('preset loading shows success snackbar', (tester) async {
+      await tester.pumpWidget(_buildTestWidget());
+      await tester.pumpAndSettle();
+
+      // Open preset menu
+      await tester.tap(find.byIcon(Icons.snippet_folder));
+      await tester.pumpAndSettle();
+
+      // Tap SPA preset
+      await tester.tap(find.byIcon(Icons.web).last);
+      await tester.pumpAndSettle();
+
+      expect(find.byType(SnackBar), findsOneWidget);
+    });
+  });
+
+  group('Empty routes state', () {
+    testWidgets('shows no routes configured message', (tester) async {
+      await tester.pumpWidget(_buildTestWidget());
+      await tester.pumpAndSettle();
+
+      expect(find.text('No routes configured'), findsOneWidget);
+      expect(find.textContaining('Routes (0)'), findsOneWidget);
+    });
+
+    testWidgets('route card shows handler description', (tester) async {
+      final service = MockCaddyService();
+      final bloc = CaddyBloc(service);
+      bloc.emit(
+        CaddyState.initial().copyWith(
+          config: CaddyConfig(
+            routes: [
+              const CaddyRoute(
+                path: '/files/*',
+                handler: StaticFileHandler(root: '/srv/data'),
+              ),
+              const CaddyRoute(
+                path: '/api/*',
+                handler: ReverseProxyHandler(
+                  upstreams: ['localhost:3000', 'localhost:3001'],
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+
+      await tester.pumpWidget(_buildTestWidget(bloc: bloc));
+      await tester.pumpAndSettle();
+
+      expect(find.textContaining('Routes (2)'), findsOneWidget);
+      expect(find.text('Static Files: /srv/data'), findsOneWidget);
+      expect(
+        find.text('Reverse Proxy: localhost:3000, localhost:3001'),
+        findsOneWidget,
+      );
+      bloc.close();
+    });
+  });
 }
