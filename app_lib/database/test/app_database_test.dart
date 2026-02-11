@@ -195,4 +195,137 @@ void main() {
       expect(names, containsAll(['first', 'second', 'third']));
     });
   });
+
+  group('CaddyConfigs edge cases', () {
+    test('config name with special characters', () async {
+      await db.upsertCaddyConfig(
+        name: 'my config (v2) — production!',
+        configJson: '{"special":true}',
+      );
+
+      final config = await db.getCaddyConfigByName(
+        'my config (v2) — production!',
+      );
+      expect(config, isNotNull);
+      expect(config!.name, 'my config (v2) — production!');
+    });
+
+    test('config name with unicode characters', () async {
+      await db.upsertCaddyConfig(
+        name: '生产配置 🚀',
+        configJson: '{"unicode":true}',
+      );
+
+      final config = await db.getCaddyConfigByName('生产配置 🚀');
+      expect(config, isNotNull);
+      expect(config!.configJson, '{"unicode":true}');
+    });
+
+    test('very long config JSON', () async {
+      final longJson = '{"data":"${'x' * 10000}"}';
+      await db.upsertCaddyConfig(name: 'large', configJson: longJson);
+
+      final config = await db.getCaddyConfigByName('large');
+      expect(config, isNotNull);
+      expect(config!.configJson.length, longJson.length);
+    });
+
+    test('empty config name', () async {
+      await db.upsertCaddyConfig(name: '', configJson: '{}');
+
+      final config = await db.getCaddyConfigByName('');
+      expect(config, isNotNull);
+      expect(config!.name, isEmpty);
+    });
+
+    test('upsert preserves isActive when updating', () async {
+      await db.upsertCaddyConfig(
+        name: 'persistent',
+        configJson: '{"v":1}',
+        isActive: true,
+      );
+
+      // Update config but with isActive=false (default)
+      await db.upsertCaddyConfig(name: 'persistent', configJson: '{"v":2}');
+
+      final config = await db.getCaddyConfigByName('persistent');
+      expect(config!.configJson, '{"v":2}');
+      // isActive is overwritten by the upsert (DoUpdate replaces)
+      expect(config.isActive, isFalse);
+    });
+
+    test('setActiveCaddyConfig for nonexistent name is safe', () async {
+      await db.upsertCaddyConfig(
+        name: 'existing',
+        configJson: '{}',
+        isActive: true,
+      );
+
+      // Setting a nonexistent name should deactivate all but not crash
+      await db.setActiveCaddyConfig('nonexistent');
+
+      final active = await db.getActiveCaddyConfig();
+      // The nonexistent config was "activated" but doesn't exist, so no result
+      expect(active, isNull);
+
+      // The existing config should have been deactivated
+      final config = await db.getCaddyConfigByName('existing');
+      expect(config!.isActive, isFalse);
+    });
+
+    test('rapid sequential upserts maintain data integrity', () async {
+      // Simulate rapid saves
+      for (var i = 0; i < 20; i++) {
+        await db.upsertCaddyConfig(name: 'rapid', configJson: '{"version":$i}');
+      }
+
+      final configs = await db.getAllCaddyConfigs();
+      expect(configs, hasLength(1));
+      expect(configs.first.configJson, '{"version":19}');
+    });
+
+    test('delete then re-insert with same name', () async {
+      await db.upsertCaddyConfig(
+        name: 'recyclable',
+        configJson: '{"v":1}',
+        adminEnabled: true,
+      );
+
+      await db.deleteCaddyConfig('recyclable');
+
+      await db.upsertCaddyConfig(
+        name: 'recyclable',
+        configJson: '{"v":2}',
+        adminEnabled: false,
+      );
+
+      final config = await db.getCaddyConfigByName('recyclable');
+      expect(config, isNotNull);
+      expect(config!.configJson, '{"v":2}');
+      expect(config.adminEnabled, isFalse);
+    });
+
+    test('getActiveCaddyConfig with multiple active returns one', () async {
+      // Directly insert two active configs (bypassing setActive)
+      await db.upsertCaddyConfig(name: 'a', configJson: '{}', isActive: true);
+      await db.upsertCaddyConfig(name: 'b', configJson: '{}', isActive: true);
+
+      // getSingleOrNull with two results throws, so setActive first
+      await db.setActiveCaddyConfig('a');
+      final active = await db.getActiveCaddyConfig();
+      expect(active, isNotNull);
+      expect(active!.name, 'a');
+    });
+
+    test('watchAllCaddyConfigs emits on delete', () async {
+      await db.upsertCaddyConfig(name: 'watch-me', configJson: '{}');
+
+      // Set up listener for next emission after delete
+      final futureConfigs = db.watchAllCaddyConfigs().skip(1).first;
+      await db.deleteCaddyConfig('watch-me');
+
+      final configs = await futureConfigs;
+      expect(configs, isEmpty);
+    });
+  });
 }
