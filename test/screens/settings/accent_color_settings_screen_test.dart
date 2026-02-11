@@ -56,19 +56,38 @@ void main() {
       expect(themeList.length, 4);
     });
 
-    testWidgets('tapping a color option changes theme', (tester) async {
-      await tester.pumpWidget(_buildTestWidget(themeBloc: themeBloc));
-
-      // Find GestureDetectors that are color circles
-      // The selected one has a checkmark icon
-      final checkmarks = find.byIcon(CupertinoIcons.checkmark);
-      expect(checkmarks, findsOneWidget);
-    });
-
     testWidgets('selected color shows checkmark icon', (tester) async {
       await tester.pumpWidget(_buildTestWidget(themeBloc: themeBloc));
 
       expect(find.byIcon(CupertinoIcons.checkmark), findsOneWidget);
+    });
+
+    testWidgets('displays all 4 theme names via themeList', (tester) async {
+      await tester.pumpWidget(_buildTestWidget(themeBloc: themeBloc));
+
+      // Verify themeList has 4 entries with expected names
+      expect(themeList.map((t) => t.name).toList(), [
+        'Violet',
+        'Green',
+        'Fire',
+        'Wheat',
+      ]);
+    });
+
+    testWidgets('ChangeTheme event updates bloc state', (tester) async {
+      // Verify the BLoC responds to ChangeTheme
+      themeBloc.add(ChangeTheme(FireTheme()));
+      await tester.pump();
+
+      expect(themeBloc.state.theme.name, 'Fire');
+    });
+
+    testWidgets('each theme has non-null primary color', (tester) async {
+      await tester.pumpWidget(_buildTestWidget(themeBloc: themeBloc));
+
+      for (final theme in themeList) {
+        expect(theme.lightTheme.colorScheme.primary, isNotNull);
+      }
     });
 
     testWidgets('has correct static name and path', (tester) async {
