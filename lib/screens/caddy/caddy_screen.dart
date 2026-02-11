@@ -444,6 +444,8 @@ class _ConfigSummary extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final validationError = CaddyConfigPresets.validate(state.config);
+    final isValid = validationError == null;
     final semanticLabel =
         '${context.l10n.caddyConfig}. '
         '${context.l10n.caddyListenAddress(state.config.listenAddress)}. '
@@ -457,14 +459,31 @@ class _ConfigSummary extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(
-                context.l10n.caddyConfig,
-                style: Theme.of(context).textTheme.titleSmall,
+              Row(
+                children: [
+                  Text(
+                    context.l10n.caddyConfig,
+                    style: Theme.of(context).textTheme.titleSmall,
+                  ),
+                  const Spacer(),
+                  Icon(
+                    isValid ? Icons.check_circle : Icons.warning,
+                    size: 16,
+                    color: isValid ? Colors.green : Colors.orange,
+                  ),
+                  const SizedBox(width: 4),
+                  Text(
+                    isValid
+                        ? context.l10n.caddyConfigValid
+                        : context.l10n.caddyValidate,
+                    style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                      color: isValid ? Colors.green : Colors.orange,
+                    ),
+                  ),
+                ],
               ),
               const SizedBox(height: 8),
-              Text(
-                '${context.l10n.caddyListenAddress('')}${state.config.listenAddress}',
-              ),
+              Text(context.l10n.caddyListenAddress(state.config.listenAddress)),
               Text('Routes: ${state.config.routes.length}'),
             ],
           ),

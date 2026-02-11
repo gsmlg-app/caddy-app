@@ -153,6 +153,32 @@ void main() {
     });
   });
 
+  group('Config validation indicator', () {
+    testWidgets('shows valid indicator for default config', (tester) async {
+      await tester.pumpWidget(_buildTestWidget());
+      await tester.pumpAndSettle();
+
+      expect(find.byIcon(Icons.check_circle), findsOneWidget);
+      expect(find.text('Configuration is valid'), findsOneWidget);
+    });
+
+    testWidgets('shows warning for invalid rawJson config', (tester) async {
+      final service = MockCaddyService();
+      final bloc = CaddyBloc(service);
+      bloc.emit(
+        CaddyState.initial().copyWith(
+          config: const CaddyConfig(rawJson: '{invalid json'),
+        ),
+      );
+
+      await tester.pumpWidget(_buildTestWidget(bloc: bloc));
+      await tester.pumpAndSettle();
+
+      expect(find.byIcon(Icons.warning), findsOneWidget);
+      bloc.close();
+    });
+  });
+
   group('Error recovery dialog', () {
     testWidgets('shows error recovery dialog on port-in-use error', (
       tester,
