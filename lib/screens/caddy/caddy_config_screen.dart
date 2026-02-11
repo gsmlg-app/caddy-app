@@ -522,36 +522,57 @@ class _SimpleConfigForm extends StatelessWidget {
                   child: Text('No routes configured'),
                 ),
               ),
-            ...state.config.routes.asMap().entries.map(
-              (entry) => Card(
-                child: ListTile(
-                  title: Text(entry.value.path),
-                  subtitle: Text(switch (entry.value.handler) {
-                    StaticFileHandler(root: final root) =>
-                      'Static Files: $root',
-                    ReverseProxyHandler(upstreams: final upstreams) =>
-                      'Reverse Proxy: ${upstreams.join(', ')}',
-                  }),
-                  onTap: () => _showRouteDialog(
-                    context,
-                    editIndex: entry.key,
-                    existingRoute: entry.value,
-                  ),
-                  trailing: IconButton(
-                    icon: const Icon(Icons.delete_outline),
-                    onPressed: () {
-                      final routes = [...state.config.routes]
-                        ..removeAt(entry.key);
-                      context.read<CaddyBloc>().add(
-                        CaddyUpdateConfig(
-                          state.config.copyWith(routes: routes),
-                        ),
-                      );
-                    },
-                  ),
-                ),
+            if (state.config.routes.isNotEmpty)
+              ReorderableListView.builder(
+                shrinkWrap: true,
+                physics: const NeverScrollableScrollPhysics(),
+                itemCount: state.config.routes.length,
+                onReorder: (oldIndex, newIndex) {
+                  if (newIndex > oldIndex) newIndex--;
+                  final routes = [...state.config.routes];
+                  final route = routes.removeAt(oldIndex);
+                  routes.insert(newIndex, route);
+                  context.read<CaddyBloc>().add(
+                    CaddyUpdateConfig(state.config.copyWith(routes: routes)),
+                  );
+                },
+                itemBuilder: (_, index) {
+                  final route = state.config.routes[index];
+                  return Card(
+                    key: ValueKey('route_$index'),
+                    child: ListTile(
+                      leading: ReorderableDragStartListener(
+                        index: index,
+                        child: const Icon(Icons.drag_handle),
+                      ),
+                      title: Text(route.path),
+                      subtitle: Text(switch (route.handler) {
+                        StaticFileHandler(root: final root) =>
+                          'Static Files: $root',
+                        ReverseProxyHandler(upstreams: final upstreams) =>
+                          'Reverse Proxy: ${upstreams.join(', ')}',
+                      }),
+                      onTap: () => _showRouteDialog(
+                        context,
+                        editIndex: index,
+                        existingRoute: route,
+                      ),
+                      trailing: IconButton(
+                        icon: const Icon(Icons.delete_outline),
+                        onPressed: () {
+                          final routes = [...state.config.routes]
+                            ..removeAt(index);
+                          context.read<CaddyBloc>().add(
+                            CaddyUpdateConfig(
+                              state.config.copyWith(routes: routes),
+                            ),
+                          );
+                        },
+                      ),
+                    ),
+                  );
+                },
               ),
-            ),
             const SizedBox(height: 24),
             _TlsSection(config: state.config),
             const SizedBox(height: 24),

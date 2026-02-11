@@ -1029,4 +1029,113 @@ void main() {
       bloc.close();
     });
   });
+
+  group('Route reordering', () {
+    testWidgets('shows drag handle icons for each route', (tester) async {
+      final service = MockCaddyService();
+      final bloc = CaddyBloc(service);
+      bloc.add(
+        CaddyUpdateConfig(
+          CaddyConfig(
+            listenAddress: ':2015',
+            routes: [
+              const CaddyRoute(
+                path: '/api/*',
+                handler: ReverseProxyHandler(upstreams: ['localhost:3000']),
+              ),
+              const CaddyRoute(
+                path: '/static/*',
+                handler: StaticFileHandler(root: '/var/www'),
+              ),
+            ],
+          ),
+        ),
+      );
+
+      await tester.pumpWidget(_buildTestWidget(bloc: bloc));
+      await tester.pumpAndSettle();
+
+      expect(find.byIcon(Icons.drag_handle), findsNWidgets(2));
+      bloc.close();
+    });
+
+    testWidgets('route list uses ReorderableListView', (tester) async {
+      final service = MockCaddyService();
+      final bloc = CaddyBloc(service);
+      bloc.add(
+        CaddyUpdateConfig(
+          CaddyConfig(
+            listenAddress: ':2015',
+            routes: [
+              const CaddyRoute(
+                path: '/a/*',
+                handler: StaticFileHandler(root: '/a'),
+              ),
+              const CaddyRoute(
+                path: '/b/*',
+                handler: StaticFileHandler(root: '/b'),
+              ),
+            ],
+          ),
+        ),
+      );
+
+      await tester.pumpWidget(_buildTestWidget(bloc: bloc));
+      await tester.pumpAndSettle();
+
+      expect(find.byType(ReorderableListView), findsOneWidget);
+      bloc.close();
+    });
+
+    testWidgets('reordering routes updates config order', (tester) async {
+      final service = MockCaddyService();
+      final bloc = CaddyBloc(service);
+
+      final config = CaddyConfig(
+        listenAddress: ':2015',
+        routes: [
+          const CaddyRoute(
+            path: '/first/*',
+            handler: StaticFileHandler(root: '/first'),
+          ),
+          const CaddyRoute(
+            path: '/second/*',
+            handler: StaticFileHandler(root: '/second'),
+          ),
+          const CaddyRoute(
+            path: '/third/*',
+            handler: StaticFileHandler(root: '/third'),
+          ),
+        ],
+      );
+      bloc.add(CaddyUpdateConfig(config));
+
+      await tester.pumpWidget(_buildTestWidget(bloc: bloc));
+      await tester.pumpAndSettle();
+
+      // Verify initial order
+      expect(bloc.state.config.routes[0].path, '/first/*');
+      expect(bloc.state.config.routes[1].path, '/second/*');
+      expect(bloc.state.config.routes[2].path, '/third/*');
+
+      // Simulate reorder: move first to last position
+      final routes = [...bloc.state.config.routes];
+      final route = routes.removeAt(0);
+      routes.insert(2, route);
+      bloc.add(CaddyUpdateConfig(bloc.state.config.copyWith(routes: routes)));
+      await tester.pumpAndSettle();
+
+      expect(bloc.state.config.routes[0].path, '/second/*');
+      expect(bloc.state.config.routes[1].path, '/third/*');
+      expect(bloc.state.config.routes[2].path, '/first/*');
+      bloc.close();
+    });
+
+    testWidgets('no drag handle when routes list is empty', (tester) async {
+      await tester.pumpWidget(_buildTestWidget());
+      await tester.pumpAndSettle();
+
+      expect(find.byIcon(Icons.drag_handle), findsNothing);
+    });
+  });
 }
