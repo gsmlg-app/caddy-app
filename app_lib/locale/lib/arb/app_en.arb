@@ -222,5 +222,11 @@
   "caddyAdminApiStatus": "Admin API",
   "caddyEnabled": "Enabled",
   "caddyDisabled": "Disabled",
+  "homeQuickActions": "Quick Actions",
+  "homeServerStatus": "Server Status",
+  "homeGoToServer": "Server",
+  "homeGoToConfig": "Config",
+  "homeGoToLogs": "Logs",
+  "homeGoToSecrets": "Secrets",
   "@@description": "App description"
 }
