@@ -5,6 +5,7 @@ import 'package:app_locale/app_locale.dart';
 import 'package:caddy_bloc/caddy_bloc.dart';
 import 'package:caddy_service/caddy_service.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 
@@ -40,27 +41,61 @@ class CaddyScreen extends StatelessWidget {
             }
           },
           builder: (context, state) {
-            return SingleChildScrollView(
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  _StatusCard(state: state),
-                  const SizedBox(height: 16),
-                  _ActionButtons(state: state),
-                  if (state.isRunning) ...[
-                    const SizedBox(height: 16),
-                    _MetricsCard(state: state),
-                  ],
-                  const SizedBox(height: 16),
-                  _ConfigSummary(state: state),
-                  const SizedBox(height: 16),
-                  _AdminApiCard(state: state),
-                  const SizedBox(height: 16),
-                  _AutoRestartCard(state: state),
-                  const SizedBox(height: 16),
-                  _NavigationLinks(state: state),
-                ],
+            final bloc = context.read<CaddyBloc>();
+            return CallbackShortcuts(
+              bindings: {
+                const SingleActivator(
+                  LogicalKeyboardKey.keyS,
+                  control: true,
+                ): () {
+                  if (state.isStopped || state.hasError) {
+                    bloc.add(CaddyStart(state.config));
+                  }
+                },
+                const SingleActivator(
+                  LogicalKeyboardKey.keyQ,
+                  control: true,
+                ): () {
+                  if (state.isRunning) {
+                    bloc.add(const CaddyStop());
+                  }
+                },
+                const SingleActivator(
+                  LogicalKeyboardKey.keyR,
+                  control: true,
+                ): () {
+                  if (state.isRunning) {
+                    bloc.add(CaddyReload(state.config));
+                  }
+                },
+              },
+              child: Focus(
+                autofocus: true,
+                child: SingleChildScrollView(
+                  padding: const EdgeInsets.all(16),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      _StatusCard(state: state),
+                      const SizedBox(height: 16),
+                      _ActionButtons(state: state),
+                      if (state.isRunning) ...[
+                        const SizedBox(height: 16),
+                        _MetricsCard(state: state),
+                      ],
+                      const SizedBox(height: 16),
+                      _ConfigSummary(state: state),
+                      const SizedBox(height: 16),
+                      _AdminApiCard(state: state),
+                      const SizedBox(height: 16),
+                      _AutoRestartCard(state: state),
+                      const SizedBox(height: 16),
+                      _NavigationLinks(state: state),
+                      const SizedBox(height: 8),
+                      _KeyboardShortcutsHint(),
+                    ],
+                  ),
+                ),
               ),
             );
           },
@@ -474,6 +509,81 @@ class _NavigationLinks extends StatelessWidget {
           trailing: const Icon(Icons.chevron_right),
           onTap: () => context.goNamed(CaddySecretsScreen.name),
         ),
+      ],
+    );
+  }
+}
+
+class _KeyboardShortcutsHint extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(12),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              context.l10n.caddyShortcutsTitle,
+              style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
+              ),
+            ),
+            const SizedBox(height: 4),
+            Wrap(
+              spacing: 8,
+              runSpacing: 4,
+              children: [
+                _ShortcutChip(
+                  shortcut: 'Ctrl+S',
+                  label: context.l10n.caddyShortcutStart,
+                ),
+                _ShortcutChip(
+                  shortcut: 'Ctrl+Q',
+                  label: context.l10n.caddyShortcutStop,
+                ),
+                _ShortcutChip(
+                  shortcut: 'Ctrl+R',
+                  label: context.l10n.caddyShortcutReload,
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _ShortcutChip extends StatelessWidget {
+  const _ShortcutChip({required this.shortcut, required this.label});
+
+  final String shortcut;
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+          decoration: BoxDecoration(
+            color: Theme.of(context).colorScheme.surfaceContainerHighest,
+            borderRadius: BorderRadius.circular(4),
+            border: Border.all(
+              color: Theme.of(context).colorScheme.outlineVariant,
+            ),
+          ),
+          child: Text(
+            shortcut,
+            style: Theme.of(
+              context,
+            ).textTheme.labelSmall?.copyWith(fontFamily: 'monospace'),
+          ),
+        ),
+        const SizedBox(width: 4),
+        Text(label, style: Theme.of(context).textTheme.labelSmall),
       ],
     );
   }

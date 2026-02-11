@@ -2,6 +2,7 @@ import 'package:app_locale/app_locale.dart';
 import 'package:caddy_bloc/caddy_bloc.dart';
 import 'package:caddy_service/caddy_service.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:caddy_app/screens/caddy/caddy_screen.dart';
@@ -247,6 +248,191 @@ void main() {
       // Same error state - dialog should NOT re-appear
       // (because listenWhen checks prev.hasError != curr.hasError)
       bloc.close();
+    });
+  });
+
+  group('Keyboard shortcuts', () {
+    testWidgets('Ctrl+S starts server when stopped', (tester) async {
+      final service = MockCaddyService();
+      final bloc = CaddyBloc(service);
+
+      await tester.pumpWidget(_buildTestWidget(bloc: bloc));
+      await tester.pumpAndSettle();
+
+      // Server should be stopped initially
+      expect(bloc.state.isStopped, isTrue);
+
+      // Send Ctrl+S keyboard shortcut
+      await tester.sendKeyDownEvent(LogicalKeyboardKey.controlLeft);
+      await tester.sendKeyEvent(LogicalKeyboardKey.keyS);
+      await tester.sendKeyUpEvent(LogicalKeyboardKey.controlLeft);
+      await tester.pumpAndSettle();
+
+      // Server should transition away from stopped
+      // (it will go to loading or running via the mock service)
+      expect(bloc.state.isStopped, isFalse);
+      bloc.close();
+    });
+
+    testWidgets('Ctrl+Q stops server when running', (tester) async {
+      final service = MockCaddyService();
+      final bloc = CaddyBloc(service);
+      bloc.emit(
+        CaddyState.initial().copyWith(
+          status: CaddyRunning(config: '{}', startedAt: DateTime.now()),
+        ),
+      );
+
+      await tester.pumpWidget(_buildTestWidget(bloc: bloc));
+      await tester.pumpAndSettle();
+
+      // Server should be running
+      expect(bloc.state.isRunning, isTrue);
+
+      // Send Ctrl+Q keyboard shortcut
+      await tester.sendKeyDownEvent(LogicalKeyboardKey.controlLeft);
+      await tester.sendKeyEvent(LogicalKeyboardKey.keyQ);
+      await tester.sendKeyUpEvent(LogicalKeyboardKey.controlLeft);
+      await tester.pumpAndSettle();
+
+      // Server should be stopped
+      expect(bloc.state.isStopped, isTrue);
+      bloc.close();
+    });
+
+    testWidgets('Ctrl+R reloads config when running', (tester) async {
+      final service = MockCaddyService();
+      final bloc = CaddyBloc(service);
+      bloc.emit(
+        CaddyState.initial().copyWith(
+          status: CaddyRunning(config: '{}', startedAt: DateTime.now()),
+        ),
+      );
+
+      await tester.pumpWidget(_buildTestWidget(bloc: bloc));
+      await tester.pumpAndSettle();
+
+      expect(bloc.state.isRunning, isTrue);
+
+      // Send Ctrl+R keyboard shortcut
+      await tester.sendKeyDownEvent(LogicalKeyboardKey.controlLeft);
+      await tester.sendKeyEvent(LogicalKeyboardKey.keyR);
+      await tester.sendKeyUpEvent(LogicalKeyboardKey.controlLeft);
+      await tester.pumpAndSettle();
+
+      // Server should still be running after reload
+      expect(bloc.state.isRunning, isTrue);
+      bloc.close();
+    });
+
+    testWidgets('Ctrl+S does nothing when server is running', (tester) async {
+      final service = MockCaddyService();
+      final bloc = CaddyBloc(service);
+      bloc.emit(
+        CaddyState.initial().copyWith(
+          status: CaddyRunning(config: '{}', startedAt: DateTime.now()),
+        ),
+      );
+
+      await tester.pumpWidget(_buildTestWidget(bloc: bloc));
+      await tester.pumpAndSettle();
+
+      expect(bloc.state.isRunning, isTrue);
+
+      // Send Ctrl+S - should be ignored since already running
+      await tester.sendKeyDownEvent(LogicalKeyboardKey.controlLeft);
+      await tester.sendKeyEvent(LogicalKeyboardKey.keyS);
+      await tester.sendKeyUpEvent(LogicalKeyboardKey.controlLeft);
+      await tester.pumpAndSettle();
+
+      // Should still be running (not restarted)
+      expect(bloc.state.isRunning, isTrue);
+      bloc.close();
+    });
+
+    testWidgets('Ctrl+Q does nothing when server is stopped', (tester) async {
+      final service = MockCaddyService();
+      final bloc = CaddyBloc(service);
+
+      await tester.pumpWidget(_buildTestWidget(bloc: bloc));
+      await tester.pumpAndSettle();
+
+      expect(bloc.state.isStopped, isTrue);
+
+      // Send Ctrl+Q - should be ignored since already stopped
+      await tester.sendKeyDownEvent(LogicalKeyboardKey.controlLeft);
+      await tester.sendKeyEvent(LogicalKeyboardKey.keyQ);
+      await tester.sendKeyUpEvent(LogicalKeyboardKey.controlLeft);
+      await tester.pumpAndSettle();
+
+      // Should still be stopped
+      expect(bloc.state.isStopped, isTrue);
+      bloc.close();
+    });
+
+    testWidgets('Ctrl+S starts server from error state', (tester) async {
+      final service = MockCaddyService();
+      final bloc = CaddyBloc(service);
+
+      await tester.pumpWidget(_buildTestWidget(bloc: bloc));
+      await tester.pumpAndSettle();
+
+      // Transition to error state
+      bloc.emit(
+        CaddyState.initial().copyWith(
+          status: const CaddyError(message: 'some error'),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(bloc.state.hasError, isTrue);
+
+      // Dismiss the error dialog
+      await tester.tap(find.text('Dismiss'));
+      await tester.pumpAndSettle();
+
+      // Send Ctrl+S - should start from error state
+      await tester.sendKeyDownEvent(LogicalKeyboardKey.controlLeft);
+      await tester.sendKeyEvent(LogicalKeyboardKey.keyS);
+      await tester.sendKeyUpEvent(LogicalKeyboardKey.controlLeft);
+      await tester.pumpAndSettle();
+
+      // Server should transition away from error
+      expect(bloc.state.hasError, isFalse);
+      bloc.close();
+    });
+  });
+
+  group('Keyboard shortcuts hint', () {
+    testWidgets('shows keyboard shortcuts card', (tester) async {
+      await tester.pumpWidget(_buildTestWidget());
+      await tester.pumpAndSettle();
+
+      expect(find.text('Keyboard Shortcuts'), findsOneWidget);
+    });
+
+    testWidgets('shows Ctrl+S shortcut chip', (tester) async {
+      await tester.pumpWidget(_buildTestWidget());
+      await tester.pumpAndSettle();
+
+      expect(find.text('Ctrl+S'), findsOneWidget);
+      expect(find.text('Start Server'), findsOneWidget);
+    });
+
+    testWidgets('shows Ctrl+Q shortcut chip', (tester) async {
+      await tester.pumpWidget(_buildTestWidget());
+      await tester.pumpAndSettle();
+
+      expect(find.text('Ctrl+Q'), findsOneWidget);
+      expect(find.text('Stop Server'), findsOneWidget);
+    });
+
+    testWidgets('shows Ctrl+R shortcut chip', (tester) async {
+      await tester.pumpWidget(_buildTestWidget());
+      await tester.pumpAndSettle();
+
+      expect(find.text('Ctrl+R'), findsOneWidget);
+      expect(find.text('Reload Config'), findsOneWidget);
     });
   });
 }

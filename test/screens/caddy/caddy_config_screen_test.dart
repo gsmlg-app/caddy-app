@@ -312,4 +312,214 @@ void main() {
       bloc.close();
     });
   });
+
+  group('Config diff dialog', () {
+    testWidgets('apply shows diff dialog when server is running', (
+      tester,
+    ) async {
+      final service = MockCaddyService();
+      final bloc = CaddyBloc(service);
+      bloc.emit(
+        CaddyState.initial().copyWith(
+          status: CaddyRunning(config: '{}', startedAt: DateTime.now()),
+        ),
+      );
+
+      await tester.pumpWidget(_buildTestWidget(bloc: bloc));
+      await tester.pumpAndSettle();
+
+      // Change the listen address
+      final textField = find.byType(TextField);
+      await tester.enterText(textField, 'localhost:9999');
+
+      await tester.tap(find.text('Apply'));
+      await tester.pumpAndSettle();
+
+      // Diff dialog should appear
+      expect(find.byType(AlertDialog), findsOneWidget);
+      expect(find.text('Review Changes'), findsOneWidget);
+      bloc.close();
+    });
+
+    testWidgets('apply without running server saves directly', (tester) async {
+      final service = MockCaddyService();
+      final bloc = CaddyBloc(service);
+
+      await tester.pumpWidget(_buildTestWidget(bloc: bloc));
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.text('Apply'));
+      await tester.pumpAndSettle();
+
+      // No dialog should appear when server is not running
+      expect(find.text('Review Changes'), findsNothing);
+      bloc.close();
+    });
+
+    testWidgets('diff dialog shows Apply Changes button', (tester) async {
+      final service = MockCaddyService();
+      final bloc = CaddyBloc(service);
+      bloc.emit(
+        CaddyState.initial().copyWith(
+          status: CaddyRunning(config: '{}', startedAt: DateTime.now()),
+        ),
+      );
+
+      await tester.pumpWidget(_buildTestWidget(bloc: bloc));
+      await tester.pumpAndSettle();
+
+      // Change config to get a diff
+      final textField = find.byType(TextField);
+      await tester.enterText(textField, 'localhost:7777');
+
+      await tester.tap(find.text('Apply'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Apply Changes'), findsOneWidget);
+      expect(find.text('Cancel'), findsOneWidget);
+      bloc.close();
+    });
+
+    testWidgets('cancel button closes diff dialog', (tester) async {
+      final service = MockCaddyService();
+      final bloc = CaddyBloc(service);
+      bloc.emit(
+        CaddyState.initial().copyWith(
+          status: CaddyRunning(config: '{}', startedAt: DateTime.now()),
+        ),
+      );
+
+      await tester.pumpWidget(_buildTestWidget(bloc: bloc));
+      await tester.pumpAndSettle();
+
+      final textField = find.byType(TextField);
+      await tester.enterText(textField, 'localhost:7777');
+
+      await tester.tap(find.text('Apply'));
+      await tester.pumpAndSettle();
+
+      expect(find.byType(AlertDialog), findsOneWidget);
+
+      await tester.tap(find.text('Cancel'));
+      await tester.pumpAndSettle();
+
+      expect(find.byType(AlertDialog), findsNothing);
+      bloc.close();
+    });
+
+    testWidgets('diff dialog shows no changes message for identical config', (
+      tester,
+    ) async {
+      final service = MockCaddyService();
+      final bloc = CaddyBloc(service);
+      bloc.emit(
+        CaddyState.initial().copyWith(
+          status: CaddyRunning(config: '{}', startedAt: DateTime.now()),
+        ),
+      );
+
+      await tester.pumpWidget(_buildTestWidget(bloc: bloc));
+      await tester.pumpAndSettle();
+
+      // Apply without changes
+      await tester.tap(find.text('Apply'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('No changes detected'), findsOneWidget);
+      // Apply Changes button should not appear for identical configs
+      expect(find.text('Apply Changes'), findsNothing);
+      bloc.close();
+    });
+
+    testWidgets('Apply Changes button updates config and reloads', (
+      tester,
+    ) async {
+      final service = MockCaddyService();
+      final bloc = CaddyBloc(service);
+      bloc.emit(
+        CaddyState.initial().copyWith(
+          status: CaddyRunning(config: '{}', startedAt: DateTime.now()),
+        ),
+      );
+
+      await tester.pumpWidget(_buildTestWidget(bloc: bloc));
+      await tester.pumpAndSettle();
+
+      // Change the listen address to produce a diff
+      final textField = find.byType(TextField);
+      await tester.enterText(textField, 'localhost:4444');
+
+      await tester.tap(find.text('Apply'));
+      await tester.pumpAndSettle();
+
+      // Dialog should appear with Apply Changes
+      expect(find.text('Apply Changes'), findsOneWidget);
+
+      // Tap Apply Changes
+      await tester.tap(find.text('Apply Changes'));
+      await tester.pumpAndSettle();
+
+      // Dialog should close
+      expect(find.byType(AlertDialog), findsNothing);
+      // Config should be updated
+      expect(bloc.state.config.listenAddress, 'localhost:4444');
+      bloc.close();
+    });
+
+    testWidgets('diff dialog shows legend chips for current and new', (
+      tester,
+    ) async {
+      final service = MockCaddyService();
+      final bloc = CaddyBloc(service);
+      bloc.emit(
+        CaddyState.initial().copyWith(
+          status: CaddyRunning(config: '{}', startedAt: DateTime.now()),
+        ),
+      );
+
+      await tester.pumpWidget(_buildTestWidget(bloc: bloc));
+      await tester.pumpAndSettle();
+
+      // Change config to produce a diff
+      final textField = find.byType(TextField);
+      await tester.enterText(textField, 'localhost:5555');
+
+      await tester.tap(find.text('Apply'));
+      await tester.pumpAndSettle();
+
+      // Legend chips should be present
+      expect(find.textContaining('Current'), findsOneWidget);
+      expect(find.textContaining('New'), findsOneWidget);
+      bloc.close();
+    });
+
+    testWidgets('diff dialog renders diff lines with color coding', (
+      tester,
+    ) async {
+      final service = MockCaddyService();
+      final bloc = CaddyBloc(service);
+      bloc.emit(
+        CaddyState.initial().copyWith(
+          status: CaddyRunning(config: '{}', startedAt: DateTime.now()),
+        ),
+      );
+
+      await tester.pumpWidget(_buildTestWidget(bloc: bloc));
+      await tester.pumpAndSettle();
+
+      // Change config to produce a diff
+      final textField = find.byType(TextField);
+      await tester.enterText(textField, 'localhost:6666');
+
+      await tester.tap(find.text('Apply'));
+      await tester.pumpAndSettle();
+
+      // A ListView should render the diff lines (form has one too)
+      expect(find.byType(ListView), findsAtLeastNWidgets(1));
+      // Diff lines should contain the old and new port values
+      expect(find.textContaining('2015'), findsAtLeastNWidgets(1));
+      expect(find.textContaining('6666'), findsAtLeastNWidgets(1));
+      bloc.close();
+    });
+  });
 }
