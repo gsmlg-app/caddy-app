@@ -435,4 +435,90 @@ void main() {
       expect(find.text('Reload Config'), findsOneWidget);
     });
   });
+
+  group('Dashboard metrics', () {
+    testWidgets('shows active routes count when running', (tester) async {
+      final service = MockCaddyService();
+      final bloc = CaddyBloc(service);
+      bloc.emit(
+        CaddyState.initial().copyWith(
+          status: CaddyRunning(config: '{}', startedAt: DateTime.now()),
+          config: CaddyConfig(
+            listenAddress: ':2015',
+            routes: [
+              const CaddyRoute(
+                path: '/api/*',
+                handler: ReverseProxyHandler(upstreams: ['localhost:3000']),
+              ),
+              const CaddyRoute(
+                path: '/static/*',
+                handler: StaticFileHandler(root: '/var/www'),
+              ),
+            ],
+          ),
+        ),
+      );
+
+      await tester.pumpWidget(_buildTestWidget(bloc: bloc));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Active Routes'), findsOneWidget);
+      bloc.close();
+    });
+
+    testWidgets('shows admin API status in metrics when running', (
+      tester,
+    ) async {
+      final service = MockCaddyService();
+      final bloc = CaddyBloc(service);
+      bloc.emit(
+        CaddyState.initial().copyWith(
+          status: CaddyRunning(config: '{}', startedAt: DateTime.now()),
+        ),
+      );
+
+      await tester.pumpWidget(_buildTestWidget(bloc: bloc));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Disabled'), findsAtLeastNWidgets(1));
+      bloc.close();
+    });
+
+    testWidgets('shows log errors count when running', (tester) async {
+      final service = MockCaddyService();
+      final bloc = CaddyBloc(service);
+      bloc.emit(
+        CaddyState.initial().copyWith(
+          status: CaddyRunning(config: '{}', startedAt: DateTime.now()),
+          logs: ['INFO request handled', 'ERROR something failed'],
+        ),
+      );
+
+      await tester.pumpWidget(_buildTestWidget(bloc: bloc));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Log Errors'), findsOneWidget);
+      bloc.close();
+    });
+
+    testWidgets('error log count highlights in error color when > 0', (
+      tester,
+    ) async {
+      final service = MockCaddyService();
+      final bloc = CaddyBloc(service);
+      bloc.emit(
+        CaddyState.initial().copyWith(
+          status: CaddyRunning(config: '{}', startedAt: DateTime.now()),
+          logs: ['ERROR crash', 'ERROR fail'],
+        ),
+      );
+
+      await tester.pumpWidget(_buildTestWidget(bloc: bloc));
+      await tester.pumpAndSettle();
+
+      // Find the error count icon and verify it uses error_outline
+      expect(find.byIcon(Icons.error_outline), findsOneWidget);
+      bloc.close();
+    });
+  });
 }

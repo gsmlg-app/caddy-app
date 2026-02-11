@@ -339,8 +339,15 @@ class _MetricsCard extends StatelessWidget {
 
   final CaddyState state;
 
+  int get _errorLogCount =>
+      state.logs.where((l) => l.toUpperCase().contains('ERROR')).length;
+
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final primary = theme.colorScheme.primary;
+    final errorColor = theme.colorScheme.error;
+
     return Semantics(
       label:
           '${context.l10n.caddyMetrics}. ${context.l10n.caddyRequestsServed}: ${state.requestCount}',
@@ -352,32 +359,80 @@ class _MetricsCard extends StatelessWidget {
             children: [
               Text(
                 context.l10n.caddyMetrics,
-                style: Theme.of(context).textTheme.titleSmall,
+                style: theme.textTheme.titleSmall,
               ),
               const SizedBox(height: 12),
-              Row(
-                children: [
-                  ExcludeSemantics(
-                    child: Icon(
-                      Icons.http,
-                      color: Theme.of(context).colorScheme.primary,
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  Text(context.l10n.caddyRequestsServed),
-                  const Spacer(),
-                  Text(
-                    context.l10n.caddyRequestCount(state.requestCount),
-                    style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                      color: Theme.of(context).colorScheme.primary,
-                    ),
-                  ),
-                ],
+              _MetricRow(
+                icon: Icons.http,
+                iconColor: primary,
+                label: context.l10n.caddyRequestsServed,
+                value: context.l10n.caddyRequestCount(state.requestCount),
+                valueColor: primary,
+              ),
+              const SizedBox(height: 8),
+              _MetricRow(
+                icon: Icons.alt_route,
+                iconColor: primary,
+                label: context.l10n.caddyActiveRoutes,
+                value: context.l10n.caddyRouteCount(state.config.routes.length),
+                valueColor: primary,
+              ),
+              const SizedBox(height: 8),
+              _MetricRow(
+                icon: Icons.error_outline,
+                iconColor: _errorLogCount > 0 ? errorColor : primary,
+                label: context.l10n.caddyLogErrors,
+                value: context.l10n.caddyErrorCount(_errorLogCount),
+                valueColor: _errorLogCount > 0 ? errorColor : primary,
+              ),
+              const SizedBox(height: 8),
+              _MetricRow(
+                icon: Icons.admin_panel_settings,
+                iconColor: primary,
+                label: context.l10n.caddyAdminApiStatus,
+                value: state.adminEnabled
+                    ? context.l10n.caddyEnabled
+                    : context.l10n.caddyDisabled,
+                valueColor: primary,
               ),
             ],
           ),
         ),
       ),
+    );
+  }
+}
+
+class _MetricRow extends StatelessWidget {
+  const _MetricRow({
+    required this.icon,
+    required this.iconColor,
+    required this.label,
+    required this.value,
+    required this.valueColor,
+  });
+
+  final IconData icon;
+  final Color iconColor;
+  final String label;
+  final String value;
+  final Color valueColor;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        ExcludeSemantics(child: Icon(icon, color: iconColor, size: 20)),
+        const SizedBox(width: 8),
+        Text(label),
+        const Spacer(),
+        Text(
+          value,
+          style: Theme.of(
+            context,
+          ).textTheme.titleMedium?.copyWith(color: valueColor),
+        ),
+      ],
     );
   }
 }

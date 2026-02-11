@@ -201,5 +201,26 @@
   "caddyShortcutStart": "Start Server",
   "caddyShortcutStop": "Stop Server",
   "caddyShortcutReload": "Reload Config",
+  "caddyActiveRoutes": "Active Routes",
+  "caddyRouteCount": "{count}",
+  "@caddyRouteCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "caddyLogErrors": "Log Errors",
+  "caddyErrorCount": "{count}",
+  "@caddyErrorCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "caddyAdminApiStatus": "Admin API",
+  "caddyEnabled": "Enabled",
+  "caddyDisabled": "Disabled",
   "@@description": "App description"
 }
