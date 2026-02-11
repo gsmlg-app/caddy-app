@@ -814,4 +814,219 @@ void main() {
       bloc.close();
     });
   });
+
+  group('Edit route dialog', () {
+    testWidgets('tapping route card opens edit dialog with existing values', (
+      tester,
+    ) async {
+      final service = MockCaddyService();
+      final bloc = CaddyBloc(service);
+      bloc.emit(
+        CaddyState.initial().copyWith(
+          config: const CaddyConfig(
+            routes: [
+              CaddyRoute(
+                path: '/static/*',
+                handler: StaticFileHandler(root: '/var/www'),
+              ),
+            ],
+          ),
+        ),
+      );
+
+      await tester.pumpWidget(_buildTestWidget(bloc: bloc));
+      await tester.pumpAndSettle();
+
+      // Tap the route card
+      await tester.tap(find.text('Static Files: /var/www'));
+      await tester.pumpAndSettle();
+
+      // Should show edit dialog with pre-populated values
+      expect(find.byType(AlertDialog), findsOneWidget);
+      expect(find.text('Edit Route'), findsAtLeastNWidgets(1));
+
+      // Path should be pre-populated
+      final pathField = find.widgetWithText(TextField, 'Route Path');
+      final pathTextField = tester.widget<TextField>(pathField);
+      expect(pathTextField.controller?.text, '/static/*');
+
+      bloc.close();
+    });
+
+    testWidgets('editing route updates it in place', (tester) async {
+      final service = MockCaddyService();
+      final bloc = CaddyBloc(service);
+      bloc.emit(
+        CaddyState.initial().copyWith(
+          config: const CaddyConfig(
+            routes: [
+              CaddyRoute(
+                path: '/old/*',
+                handler: StaticFileHandler(root: '/old/path'),
+              ),
+            ],
+          ),
+        ),
+      );
+
+      await tester.pumpWidget(_buildTestWidget(bloc: bloc));
+      await tester.pumpAndSettle();
+
+      // Tap the route card to edit
+      await tester.tap(find.text('Static Files: /old/path'));
+      await tester.pumpAndSettle();
+
+      // Change the path
+      final pathField = find.widgetWithText(TextField, 'Route Path');
+      await tester.enterText(pathField, '/new/*');
+
+      // Change the file root
+      final rootField = find.widgetWithText(TextField, 'File Root Directory');
+      await tester.enterText(rootField, '/new/path');
+
+      // Tap OK
+      await tester.tap(find.text('OK'));
+      await tester.pumpAndSettle();
+
+      // Route should be updated in place (still 1 route, not 2)
+      expect(bloc.state.config.routes, hasLength(1));
+      expect(bloc.state.config.routes.first.path, '/new/*');
+      expect(
+        (bloc.state.config.routes.first.handler as StaticFileHandler).root,
+        '/new/path',
+      );
+      bloc.close();
+    });
+
+    testWidgets('editing route can switch handler type', (tester) async {
+      final service = MockCaddyService();
+      final bloc = CaddyBloc(service);
+      bloc.emit(
+        CaddyState.initial().copyWith(
+          config: const CaddyConfig(
+            routes: [
+              CaddyRoute(
+                path: '/api/*',
+                handler: StaticFileHandler(root: '/srv'),
+              ),
+            ],
+          ),
+        ),
+      );
+
+      await tester.pumpWidget(_buildTestWidget(bloc: bloc));
+      await tester.pumpAndSettle();
+
+      // Tap to edit
+      await tester.tap(find.text('Static Files: /srv'));
+      await tester.pumpAndSettle();
+
+      // Switch to Reverse Proxy
+      await tester.tap(find.text('Reverse Proxy'));
+      await tester.pumpAndSettle();
+
+      // Enter upstream address
+      final upstreamField = find.widgetWithText(TextField, 'Upstream Address');
+      await tester.enterText(upstreamField, 'localhost:8080');
+
+      // Tap OK
+      await tester.tap(find.text('OK'));
+      await tester.pumpAndSettle();
+
+      expect(bloc.state.config.routes, hasLength(1));
+      expect(
+        bloc.state.config.routes.first.handler,
+        isA<ReverseProxyHandler>(),
+      );
+      final handler =
+          bloc.state.config.routes.first.handler as ReverseProxyHandler;
+      expect(handler.upstreams, ['localhost:8080']);
+      bloc.close();
+    });
+
+    testWidgets('cancel edit does not modify route', (tester) async {
+      final service = MockCaddyService();
+      final bloc = CaddyBloc(service);
+      bloc.emit(
+        CaddyState.initial().copyWith(
+          config: const CaddyConfig(
+            routes: [
+              CaddyRoute(
+                path: '/keep/*',
+                handler: StaticFileHandler(root: '/original'),
+              ),
+            ],
+          ),
+        ),
+      );
+
+      await tester.pumpWidget(_buildTestWidget(bloc: bloc));
+      await tester.pumpAndSettle();
+
+      // Tap to edit
+      await tester.tap(find.text('Static Files: /original'));
+      await tester.pumpAndSettle();
+
+      // Change the path but cancel
+      final pathField = find.widgetWithText(TextField, 'Route Path');
+      await tester.enterText(pathField, '/changed/*');
+
+      await tester.tap(find.text('Cancel'));
+      await tester.pumpAndSettle();
+
+      // Original route should be unchanged
+      expect(bloc.state.config.routes, hasLength(1));
+      expect(bloc.state.config.routes.first.path, '/keep/*');
+      expect(
+        (bloc.state.config.routes.first.handler as StaticFileHandler).root,
+        '/original',
+      );
+      bloc.close();
+    });
+
+    testWidgets('edit preserves other routes', (tester) async {
+      final service = MockCaddyService();
+      final bloc = CaddyBloc(service);
+      bloc.emit(
+        CaddyState.initial().copyWith(
+          config: const CaddyConfig(
+            routes: [
+              CaddyRoute(
+                path: '/first/*',
+                handler: StaticFileHandler(root: '/a'),
+              ),
+              CaddyRoute(
+                path: '/second/*',
+                handler: ReverseProxyHandler(upstreams: ['localhost:3000']),
+              ),
+            ],
+          ),
+        ),
+      );
+
+      await tester.pumpWidget(_buildTestWidget(bloc: bloc));
+      await tester.pumpAndSettle();
+
+      // Tap the second route to edit
+      await tester.tap(find.text('Reverse Proxy: localhost:3000'));
+      await tester.pumpAndSettle();
+
+      // Change the upstream
+      final upstreamField = find.widgetWithText(TextField, 'Upstream Address');
+      await tester.enterText(upstreamField, 'localhost:4000');
+
+      await tester.tap(find.text('OK'));
+      await tester.pumpAndSettle();
+
+      // Both routes should exist, second updated
+      expect(bloc.state.config.routes, hasLength(2));
+      expect(bloc.state.config.routes[0].path, '/first/*');
+      expect(bloc.state.config.routes[0].handler, isA<StaticFileHandler>());
+      expect(bloc.state.config.routes[1].path, '/second/*');
+      final handler =
+          bloc.state.config.routes[1].handler as ReverseProxyHandler;
+      expect(handler.upstreams, ['localhost:4000']);
+      bloc.close();
+    });
+  });
 }

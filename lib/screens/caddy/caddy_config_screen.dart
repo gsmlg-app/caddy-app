@@ -510,7 +510,7 @@ class _SimpleConfigForm extends StatelessWidget {
                 IconButton(
                   icon: const Icon(Icons.add),
                   tooltip: context.l10n.caddyAddRoute,
-                  onPressed: () => _showAddRouteDialog(context),
+                  onPressed: () => _showRouteDialog(context),
                 ),
               ],
             ),
@@ -532,6 +532,11 @@ class _SimpleConfigForm extends StatelessWidget {
                     ReverseProxyHandler(upstreams: final upstreams) =>
                       'Reverse Proxy: ${upstreams.join(', ')}',
                   }),
+                  onTap: () => _showRouteDialog(
+                    context,
+                    editIndex: entry.key,
+                    existingRoute: entry.value,
+                  ),
                   trailing: IconButton(
                     icon: const Icon(Icons.delete_outline),
                     onPressed: () {
@@ -557,10 +562,25 @@ class _SimpleConfigForm extends StatelessWidget {
     );
   }
 
-  void _showAddRouteDialog(BuildContext parentContext) {
-    final pathController = TextEditingController(text: '/*');
-    final valueController = TextEditingController();
-    var isStaticFile = true;
+  void _showRouteDialog(
+    BuildContext parentContext, {
+    int? editIndex,
+    CaddyRoute? existingRoute,
+  }) {
+    final isEditing = editIndex != null && existingRoute != null;
+    final isStaticInitially =
+        existingRoute == null || existingRoute.handler is StaticFileHandler;
+    final initialValue = switch (existingRoute?.handler) {
+      StaticFileHandler(root: final root) => root,
+      ReverseProxyHandler(upstreams: final upstreams) => upstreams.join(', '),
+      null => '',
+    };
+
+    final pathController = TextEditingController(
+      text: existingRoute?.path ?? '/*',
+    );
+    final valueController = TextEditingController(text: initialValue);
+    var isStaticFile = isStaticInitially;
 
     showDialog(
       context: parentContext,
@@ -568,7 +588,11 @@ class _SimpleConfigForm extends StatelessWidget {
         return StatefulBuilder(
           builder: (_, setDialogState) {
             return AlertDialog(
-              title: Text(dialogContext.l10n.caddyAddRoute),
+              title: Text(
+                isEditing
+                    ? dialogContext.l10n.caddyEditRoute
+                    : dialogContext.l10n.caddyAddRoute,
+              ),
               content: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
@@ -629,7 +653,12 @@ class _SimpleConfigForm extends StatelessWidget {
                       path: pathController.text,
                       handler: handler,
                     );
-                    final routes = [...bloc.state.config.routes, route];
+                    final routes = [...bloc.state.config.routes];
+                    if (isEditing) {
+                      routes[editIndex] = route;
+                    } else {
+                      routes.add(route);
+                    }
                     bloc.add(
                       CaddyUpdateConfig(
                         bloc.state.config.copyWith(routes: routes),
