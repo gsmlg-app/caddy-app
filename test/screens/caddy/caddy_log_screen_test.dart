@@ -269,5 +269,74 @@ void main() {
       expect(find.text('Log line copied'), findsOneWidget);
       bloc.close();
     });
+
+    testWidgets('combined filter and search narrows results', (tester) async {
+      final service = MockCaddyService();
+      final bloc = CaddyBloc(service);
+      bloc.add(const CaddyLogReceived('INFO: startup complete'));
+      bloc.add(const CaddyLogReceived('ERROR: startup failed'));
+      bloc.add(const CaddyLogReceived('INFO: request handled'));
+      bloc.add(const CaddyLogReceived('ERROR: request timeout'));
+
+      await tester.pumpWidget(_buildTestWidget(bloc: bloc));
+      await tester.pumpAndSettle();
+
+      // Filter by ERROR level
+      await tester.tap(find.text('ERROR'));
+      await tester.pumpAndSettle();
+
+      // Should show 2 error lines out of 4 total
+      expect(find.textContaining('2 / 4'), findsOneWidget);
+
+      // Now add search for "startup"
+      bloc.add(const CaddySetLogSearch('startup'));
+      await tester.pumpAndSettle();
+
+      // Should show 1 line (ERROR + startup) out of 4 total
+      expect(find.textContaining('1 / 4'), findsOneWidget);
+      bloc.close();
+    });
+
+    testWidgets('filter chip "All" resets to show all logs', (tester) async {
+      final service = MockCaddyService();
+      final bloc = CaddyBloc(service);
+      bloc.add(const CaddyLogReceived('INFO: line one'));
+      bloc.add(const CaddyLogReceived('ERROR: line two'));
+
+      await tester.pumpWidget(_buildTestWidget(bloc: bloc));
+      await tester.pumpAndSettle();
+
+      // Filter by ERROR
+      await tester.tap(find.text('ERROR'));
+      await tester.pumpAndSettle();
+      expect(bloc.state.logFilter, CaddyLogLevel.error);
+
+      // Reset to All
+      await tester.tap(find.text('All'));
+      await tester.pumpAndSettle();
+      expect(bloc.state.logFilter, CaddyLogLevel.all);
+      bloc.close();
+    });
+
+    testWidgets('multiple log lines display in order', (tester) async {
+      final service = MockCaddyService();
+      final bloc = CaddyBloc(service);
+      bloc.add(const CaddyLogReceived('first'));
+      bloc.add(const CaddyLogReceived('second'));
+      bloc.add(const CaddyLogReceived('third'));
+
+      await tester.pumpWidget(_buildTestWidget(bloc: bloc));
+      await tester.pumpAndSettle();
+
+      expect(find.text('first'), findsOneWidget);
+      expect(find.text('second'), findsOneWidget);
+      expect(find.text('third'), findsOneWidget);
+      bloc.close();
+    });
+
+    testWidgets('has correct static name and path', (tester) async {
+      expect(CaddyLogScreen.name, 'Caddy Logs');
+      expect(CaddyLogScreen.path, 'logs');
+    });
   });
 }
