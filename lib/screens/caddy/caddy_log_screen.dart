@@ -238,20 +238,34 @@ class _CaddyLogScreenState extends State<CaddyLogScreen> {
                     final line = logs[index];
                     final color = _logLineColor(line);
                     final searchQuery = state.logSearchQuery;
+                    Widget lineWidget;
                     if (searchQuery.isNotEmpty) {
-                      return _HighlightedLogLine(
+                      lineWidget = _HighlightedLogLine(
                         line: line,
                         query: searchQuery,
                         color: color,
                       );
+                    } else {
+                      lineWidget = Text(
+                        line,
+                        style: TextStyle(
+                          fontFamily: 'monospace',
+                          fontSize: 12,
+                          color: color,
+                        ),
+                      );
                     }
-                    return Text(
-                      line,
-                      style: TextStyle(
-                        fontFamily: 'monospace',
-                        fontSize: 12,
-                        color: color,
-                      ),
+                    return GestureDetector(
+                      onLongPress: () {
+                        Clipboard.setData(ClipboardData(text: line));
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text(context.l10n.caddyLogLineCopied),
+                            duration: const Duration(seconds: 1),
+                          ),
+                        );
+                      },
+                      child: lineWidget,
                     );
                   },
                 ),

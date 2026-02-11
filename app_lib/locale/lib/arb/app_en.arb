@@ -228,5 +228,6 @@
   "homeGoToConfig": "Config",
   "homeGoToLogs": "Logs",
   "homeGoToSecrets": "Secrets",
+  "caddyLogLineCopied": "Log line copied",
   "@@description": "App description"
 }

@@ -253,5 +253,21 @@ void main() {
       expect(find.textContaining(' / '), findsNothing);
       bloc.close();
     });
+
+    testWidgets('long press log line shows copied snackbar', (tester) async {
+      final service = MockCaddyService();
+      final bloc = CaddyBloc(service);
+      bloc.add(const CaddyLogReceived('INFO: test message'));
+
+      await tester.pumpWidget(_buildTestWidget(bloc: bloc));
+      await tester.pumpAndSettle();
+
+      // Long press the log line
+      await tester.longPress(find.text('INFO: test message'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Log line copied'), findsOneWidget);
+      bloc.close();
+    });
   });
 }
