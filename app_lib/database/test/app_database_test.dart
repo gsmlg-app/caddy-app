@@ -33,10 +33,7 @@ void main() {
     });
 
     test('upsertCaddyConfig updates existing config', () async {
-      await db.upsertCaddyConfig(
-        name: 'test-config',
-        configJson: '{"v":1}',
-      );
+      await db.upsertCaddyConfig(name: 'test-config', configJson: '{"v":1}');
       await db.upsertCaddyConfig(
         name: 'test-config',
         configJson: '{"v":2}',
@@ -50,14 +47,8 @@ void main() {
     });
 
     test('getCaddyConfigByName returns matching config', () async {
-      await db.upsertCaddyConfig(
-        name: 'alpha',
-        configJson: '{"a":1}',
-      );
-      await db.upsertCaddyConfig(
-        name: 'beta',
-        configJson: '{"b":2}',
-      );
+      await db.upsertCaddyConfig(name: 'alpha', configJson: '{"a":1}');
+      await db.upsertCaddyConfig(name: 'beta', configJson: '{"b":2}');
 
       final config = await db.getCaddyConfigByName('beta');
       expect(config, isNotNull);
@@ -71,10 +62,7 @@ void main() {
     });
 
     test('getActiveCaddyConfig returns null when no active config', () async {
-      await db.upsertCaddyConfig(
-        name: 'config',
-        configJson: '{}',
-      );
+      await db.upsertCaddyConfig(name: 'config', configJson: '{}');
 
       final active = await db.getActiveCaddyConfig();
       expect(active, isNull);
@@ -86,10 +74,7 @@ void main() {
         configJson: '{"a":1}',
         isActive: true,
       );
-      await db.upsertCaddyConfig(
-        name: 'config-b',
-        configJson: '{"b":2}',
-      );
+      await db.upsertCaddyConfig(name: 'config-b', configJson: '{"b":2}');
 
       await db.setActiveCaddyConfig('config-b');
 
@@ -103,10 +88,7 @@ void main() {
     });
 
     test('deleteCaddyConfig removes config', () async {
-      await db.upsertCaddyConfig(
-        name: 'to-delete',
-        configJson: '{}',
-      );
+      await db.upsertCaddyConfig(name: 'to-delete', configJson: '{}');
 
       await db.deleteCaddyConfig('to-delete');
 
@@ -115,14 +97,8 @@ void main() {
     });
 
     test('deleteCaddyConfig does not affect other configs', () async {
-      await db.upsertCaddyConfig(
-        name: 'keep',
-        configJson: '{"keep":true}',
-      );
-      await db.upsertCaddyConfig(
-        name: 'remove',
-        configJson: '{"remove":true}',
-      );
+      await db.upsertCaddyConfig(name: 'keep', configJson: '{"keep":true}');
+      await db.upsertCaddyConfig(name: 'remove', configJson: '{"remove":true}');
 
       await db.deleteCaddyConfig('remove');
 
@@ -134,10 +110,7 @@ void main() {
     test('watchAllCaddyConfigs emits updates', () async {
       final stream = db.watchAllCaddyConfigs();
 
-      await db.upsertCaddyConfig(
-        name: 'watched',
-        configJson: '{}',
-      );
+      await db.upsertCaddyConfig(name: 'watched', configJson: '{}');
 
       final configs = await stream.first;
       expect(configs, hasLength(1));
@@ -155,6 +128,71 @@ void main() {
       final config = await db.getCaddyConfigByName('admin-config');
       expect(config!.adminEnabled, isTrue);
       expect(config.isActive, isTrue);
+    });
+
+    test('setActiveCaddyConfig with no existing active config', () async {
+      await db.upsertCaddyConfig(name: 'only-one', configJson: '{}');
+
+      await db.setActiveCaddyConfig('only-one');
+
+      final active = await db.getActiveCaddyConfig();
+      expect(active, isNotNull);
+      expect(active!.name, 'only-one');
+      expect(active.isActive, isTrue);
+    });
+
+    test('setActiveCaddyConfig deactivates all others', () async {
+      await db.upsertCaddyConfig(name: 'a', configJson: '{}', isActive: true);
+      await db.upsertCaddyConfig(name: 'b', configJson: '{}', isActive: true);
+      await db.upsertCaddyConfig(name: 'c', configJson: '{}');
+
+      await db.setActiveCaddyConfig('c');
+
+      final configs = await db.getAllCaddyConfigs();
+      final activeConfigs = configs.where((c) => c.isActive).toList();
+      expect(activeConfigs, hasLength(1));
+      expect(activeConfigs.first.name, 'c');
+    });
+
+    test('upsertCaddyConfig sets createdAt and updatedAt', () async {
+      await db.upsertCaddyConfig(name: 'timestamped', configJson: '{}');
+
+      final config = await db.getCaddyConfigByName('timestamped');
+      expect(config!.createdAt, isNotNull);
+      expect(config.updatedAt, isNotNull);
+    });
+
+    test('deleteCaddyConfig for nonexistent name is no-op', () async {
+      await db.upsertCaddyConfig(name: 'existing', configJson: '{}');
+
+      await db.deleteCaddyConfig('nonexistent');
+
+      final configs = await db.getAllCaddyConfigs();
+      expect(configs, hasLength(1));
+    });
+
+    test('saveCaddyConfig with companion directly', () async {
+      await db.saveCaddyConfig(
+        CaddyConfigsCompanion.insert(
+          name: 'direct-save',
+          configJson: '{"direct":true}',
+        ),
+      );
+
+      final config = await db.getCaddyConfigByName('direct-save');
+      expect(config, isNotNull);
+      expect(config!.configJson, '{"direct":true}');
+    });
+
+    test('multiple configs can be retrieved in order', () async {
+      await db.upsertCaddyConfig(name: 'first', configJson: '{}');
+      await db.upsertCaddyConfig(name: 'second', configJson: '{}');
+      await db.upsertCaddyConfig(name: 'third', configJson: '{}');
+
+      final configs = await db.getAllCaddyConfigs();
+      expect(configs, hasLength(3));
+      final names = configs.map((c) => c.name).toSet();
+      expect(names, containsAll(['first', 'second', 'third']));
     });
   });
 }
