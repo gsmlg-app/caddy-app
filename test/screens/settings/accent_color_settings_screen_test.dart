@@ -94,5 +94,46 @@ void main() {
       expect(AccentColorSettingsScreen.name, 'Accent Color Settings');
       expect(AccentColorSettingsScreen.path, 'accent-color');
     });
+
+    testWidgets('dispatching ChangeTheme event changes the theme', (tester) async {
+      await tester.pumpWidget(_buildTestWidget(themeBloc: themeBloc));
+
+      // Change to Fire theme via BLoC event
+      themeBloc.add(ChangeTheme(FireTheme()));
+      await tester.pumpAndSettle();
+
+      expect(themeBloc.state.theme.name, 'Fire');
+      expect(themeBloc.state.theme, isA<FireTheme>());
+    });
+
+    testWidgets('changing theme updates BLoC state', (tester) async {
+      await tester.pumpWidget(_buildTestWidget(themeBloc: themeBloc));
+
+      // Initial theme
+      final initialTheme = themeBloc.state.theme.name;
+
+      // Change theme
+      themeBloc.add(ChangeTheme(GreenTheme()));
+      await tester.pumpAndSettle();
+
+      // BLoC state updated
+      expect(themeBloc.state.theme.name, 'Green');
+      expect(themeBloc.state.theme.name, isNot(initialTheme));
+    });
+
+    testWidgets('checkmark appears only on selected theme', (tester) async {
+      await tester.pumpWidget(_buildTestWidget(themeBloc: themeBloc));
+
+      // Initially one checkmark
+      expect(find.byIcon(CupertinoIcons.checkmark), findsOneWidget);
+
+      // Change theme
+      themeBloc.add(ChangeTheme(WheatTheme()));
+      await tester.pumpAndSettle();
+
+      // Still exactly one checkmark (on new theme)
+      expect(find.byIcon(CupertinoIcons.checkmark), findsOneWidget);
+      expect(themeBloc.state.theme.name, 'Wheat');
+    });
   });
 }
