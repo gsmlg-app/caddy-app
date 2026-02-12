@@ -2,118 +2,61 @@
 
 ## Overview
 
-Caddy App is a Flutter application for running and managing the Caddy web server. This guide explains the current implementation status and architecture for contributors.
+Caddy App is a Flutter application for running and managing the Caddy web server. This guide explains the implementation architecture for contributors.
 
 ## Implementation Status
 
-### ✅ Implemented Features
+### Go Bridge Layer (Implemented)
 
-#### Core UI (M1-M5)
-- **Dashboard Screen** - Server status, metrics, and controls
-  - Status indicator (running/stopped/error/loading)
-  - Start/Stop/Reload buttons
-  - Live uptime counter (HH:MM:SS format)
-  - Request counter
-  - Listen address display
-  - Admin API toggle
-  - Auto-restart on app resume toggle
+The Go bridge (`go/caddy_bridge/`) provides native Caddy integration:
 
-- **Configuration Management** - Visual and raw JSON editors
-  - Simple config form (listen address, routes, TLS, storage)
-  - Raw JSON editor with syntax highlighting
-  - Config validation before save/apply
-  - Config presets (Static File, Reverse Proxy, SPA, API Gateway, HTTPS+DNS, HTTPS+S3)
-  - Save/load named configurations (persisted to SQLite)
-  - Delete saved configurations
-  - Export config to file
-  - Add/remove routes dialog
+- **Desktop** (Linux/macOS): cgo shared library (`.so`/`.dylib`) loaded via `dart:ffi`
+- **Mobile** (Android/iOS): gomobile library (`.aar`/`.xcframework`) via MethodChannel
 
-- **Log Viewer** - Real-time log streaming with filtering
-  - Log level filtering (All/DEBUG/INFO/WARN/ERROR)
-  - Search/filter logs by text query
-  - Color-coded log lines by level
-  - Auto-scroll with pause/resume
-  - Copy logs to clipboard
-  - Export logs to file
-  - Clear log buffer
-  - 10,000 entry rolling buffer
+C exports: `StartCaddy`, `StopCaddy`, `ReloadCaddy`, `GetCaddyStatus`, `SetEnvironment`
 
-- **Secrets Management** - Secure credential storage
-  - Store/retrieve secrets in platform-native secure storage
-  - Android Keystore, iOS Keychain, libsecret (Linux), Keychain (macOS)
-  - Add/update/delete secrets by key name
-  - Secrets injected as environment variables at Caddy start
+Custom Caddy modules compiled in via blank imports:
+- `github.com/caddy-dns/cloudflare` — DNS challenge for Cloudflare
+- `github.com/caddy-dns/route53` — DNS challenge for AWS Route 53
+- `github.com/caddy-dns/duckdns` — DNS challenge for DuckDNS
+- `github.com/ss098/certmagic-s3` — S3 certificate storage
 
-#### State Management
-- **BLoC Pattern** - `CaddyBloc` for server lifecycle
-  - Events: Start, Stop, Reload, StatusCheck, UpdateConfig, LogReceived, ClearLogs, ToggleAdmin, SetLogFilter, SetLogSearch, LifecyclePause, LifecycleResume, SaveConfig, LoadNamedConfig, DeleteSavedConfig, ToggleAutoRestart
-  - States: CaddyStopped, CaddyRunning, CaddyError, CaddyLoading
-  - Equatable for efficient rebuilds
+### Platform Integration (Implemented)
 
-#### Data Layer
-- **Database** - Drift (SQLite) for persistent storage
-  - `CaddyConfigs` table: id, name, configJson, adminEnabled, isActive, createdAt
-  - Methods: getAllCaddyConfigs, getActiveCaddyConfig, upsertCaddyConfig, deleteCaddyConfig, setActiveCaddyConfig
+- **Linux**: `CaddyFfi` loads `libcaddy_bridge.so`, CMakeLists bundles it
+- **macOS**: `CaddyFfi` loads `libcaddy_bridge.dylib`, Xcode build phase copies it
+- **Android**: `CaddyMethodHandler.kt` + `CaddyLogStream.kt` route to gomobile AAR
+- **iOS**: xcframework build target ready (P2 priority)
 
-- **Secure Storage** - `app_secure_storage` package
-  - Platform-native encrypted storage
-  - Key-value storage for API tokens and credentials
+### Core UI (Implemented)
 
-#### App Lifecycle
-- **Auto-pause on background** - Optionally stops Caddy when app is paused
-- **Auto-restart on foreground** - Configurable restart when app resumes
-- **Crash recovery** - Detects orphaned Caddy instances on startup
+- **Dashboard Screen** — Server status, metrics, start/stop/reload controls, uptime counter, request counter, admin API toggle, auto-restart toggle, keyboard shortcuts (Ctrl+S/Q/R)
+- **Configuration Management** — Visual editor (listen address, routes, TLS, S3 storage), raw JSON editor, config presets, save/load/delete named configs, drag-and-drop route reordering, config diff dialog, import/export
+- **Log Viewer** — Real-time log streaming, level filtering, text search, color-coded lines, auto-scroll, copy-to-clipboard (long press), export, 10K entry rolling buffer
+- **Secrets Management** — Platform-native secure storage, add/update/delete secrets, injected as env vars at Caddy start (prefix `caddy_` → stripped)
+- **Home Screen** — Server status card, quick actions grid
 
-#### Testing
-- **Widget Tests** - 667 lines across 4 Caddy screen test files
-- **BLoC Tests** - 30+ tests for state transitions
-- **Database Tests** - Tests for CRUD operations
-- **Accessibility** - Semantic labels for screen readers
+### State Management (BLoC Pattern)
 
-### 🚧 Not Yet Implemented (Requires Native Go Layer)
+`CaddyBloc` handles 18 event types: Start, Stop, Reload, StatusCheck, UpdateConfig, SaveConfig, LoadSavedConfig, LoadNamedConfig, DeleteSavedConfig, LogReceived, ClearLogs, SetLogFilter, SetLogSearch, ToggleAdmin, ToggleAutoRestart, LifecyclePause, LifecycleResume, Initialize
 
-The UI is fully functional but operates in **mock mode**. The following require Go/Caddy native integration:
+Sealed status types: `CaddyStopped`, `CaddyRunning`, `CaddyError`, `CaddyLoading`
 
-#### Go Bridge Layer
-- [ ] **Go shared library** (`caddy_bridge/`) with C exports
-  - [ ] `startCaddy(configJSON)` - Launch Caddy with config
-  - [ ] `stopCaddy()` - Graceful shutdown
-  - [ ] `reloadCaddy(configJSON)` - Hot reload config
-  - [ ] `getCaddyStatus()` - Get status JSON
-  - [ ] Log streaming via platform channels
+### Data Layer
 
-#### Platform Channels
-- [ ] **Android** - MethodChannel + EventChannel integration
-  - [ ] Load `.aar` from `gomobile bind`
-  - [ ] JNI bindings in Kotlin
+- **Database** — Drift (SQLite) for config persistence (`CaddyConfigs` table)
+- **Secure Storage** — `SecureStorageVaultRepository` with namespace support
+- **App Lifecycle** — Auto-pause on background, auto-restart on foreground, crash recovery
 
-- [ ] **Linux** - dart:ffi integration
-  - [ ] Load `.so` via DynamicLibrary
-  - [ ] FFI bindings in Dart
+### Testing
 
-- [ ] **iOS** - MethodChannel + EventChannel (P2 priority)
-  - [ ] Load `.xcframework` from `gomobile bind`
-  - [ ] Swift/Objective-C bindings
-
-- [ ] **macOS** - dart:ffi integration (P1 priority)
-  - [ ] Load `.dylib` via DynamicLibrary
-  - [ ] FFI bindings in Dart
-
-#### Caddy Modules (via xcaddy)
-The Go library must be built with xcaddy to include:
-
-- [ ] **DNS Providers** (for ACME DNS-01 challenges)
-  - [ ] `github.com/caddy-dns/cloudflare`
-  - [ ] `github.com/caddy-dns/route53`
-  - [ ] `github.com/caddy-dns/duckdns`
-
-- [ ] **S3 Storage** (for certificate persistence)
-  - [ ] `github.com/ss098/certmagic-s3`
-
-#### Security
-- [ ] Environment variable injection for secrets
-- [ ] Config validation using real Caddy binary
-- [ ] Port conflict detection and user-facing messages
+- **Main App**: 196 widget tests covering all screens
+- **CaddyBloc**: 51+ BLoC tests (state transitions, lifecycle, secrets, config persistence)
+- **CaddyConfig**: 49+ model tests (serialization, presets, TLS, S3)
+- **CaddyService**: 28+ service tests (start/stop/reload, FFI, MethodChannel)
+- **CaddyMethodChannel**: 16 tests (method invocation, result handling)
+- **Go Bridge**: 11 Go unit tests (status, environment, thread safety)
+- **Other**: 250+ tests across theme, navigation, database, logging, provider, widgets
 
 ## Architecture
 
@@ -122,159 +65,95 @@ The Go library must be built with xcaddy to include:
 ```
 ├── lib/
 │   ├── main.dart                    # App entry point
-│   ├── app.dart                     # Root MaterialApp widget
+│   ├── app.dart                     # Root MaterialApp with lifecycle observer
 │   ├── router.dart                  # GoRouter configuration
 │   ├── destination.dart             # Navigation destinations
 │   └── screens/
-│       └── caddy/
-│           ├── caddy_screen.dart           # Dashboard
-│           ├── caddy_config_screen.dart    # Config editor
-│           ├── caddy_log_screen.dart       # Log viewer
-│           └── caddy_secrets_screen.dart   # Secrets manager
+│       ├── app/                     # Splash, error screens
+│       ├── home/                    # Home dashboard
+│       ├── caddy/                   # Server, config, logs, secrets
+│       └── settings/                # Appearance, theme, app settings
 │
-├── app_bloc/
-│   └── caddy/
-│       └── lib/
-│           ├── caddy_bloc.dart      # Barrel export
-│           └── src/
-│               ├── bloc.dart        # CaddyBloc implementation
-│               ├── event.dart       # CaddyEvent sealed class
-│               └── state.dart       # CaddyState class
+├── go/caddy_bridge/
+│   ├── bridge.go                    # Desktop FFI exports (cgo)
+│   ├── bridge_mobile.go             # Mobile exports (gomobile)
+│   ├── modules.go                   # Desktop Caddy module imports
+│   ├── modules_mobile.go            # Mobile Caddy module imports
+│   ├── bridge_test.go               # Go unit tests
+│   └── Makefile                     # Build targets per platform
 │
+├── app_bloc/caddy/                  # CaddyBloc state management
+├── app_plugin/caddy/                # CaddyService, CaddyConfig, CaddyFfi
 ├── app_lib/
-│   ├── database/                    # Drift database for config persistence
-│   ├── locale/                      # L10n (English ARB files)
-│   ├── logging/                     # AppLogger singleton
-│   ├── provider/                    # MainProvider (repos + ThemeBloc)
-│   └── secure_storage/              # SecureStorageVaultRepository
-│
-└── test/
-    └── screens/caddy/               # 4 widget test files (667 lines)
+│   ├── database/                    # Drift database
+│   ├── locale/                      # L10n (English ARB)
+│   ├── logging/                     # AppLogger
+│   ├── provider/                    # MainProvider, AppBlocProvider
+│   └── secure_storage/              # VaultRepository
+└── Makefile                         # Root build orchestration
 ```
 
-### Service Layer (`caddy_service`)
-
-The `caddy_service` package defines the interface between the UI and the native Caddy bridge:
+### Service Layer
 
 ```dart
-abstract class CaddyService {
-  Future<CaddyStatus> start(CaddyConfig config, {bool adminEnabled, Map<String, String> environment});
+class CaddyService {
+  Future<CaddyStatus> start(CaddyConfig config, {
+    bool adminEnabled, Map<String, String> environment});
   Future<CaddyStatus> stop();
-  Future<CaddyStatus> reload(CaddyConfig config, {bool adminEnabled, Map<String, String> environment});
+  Future<CaddyStatus> reload(CaddyConfig config, {
+    bool adminEnabled, Map<String, String> environment});
   Future<CaddyStatus> getStatus();
   Stream<String> get logStream;
 }
 ```
 
-**Current Implementation**: `MockCaddyService` returns simulated responses.
+Routes to `CaddyFfi` (desktop) or `CaddyMethodChannel` (mobile) based on platform.
 
-**Future Implementation**: `PlatformCaddyService` will use MethodChannel (mobile) or FFI (desktop) to call the Go bridge.
+### Secrets Injection
 
-### Data Models
-
-#### `CaddyConfig` (from `caddy_service`)
-```dart
-class CaddyConfig {
-  final String listenAddress;        // e.g., "localhost:2015"
-  final List<CaddyRoute> routes;     // List of routes
-  final CaddyTlsConfig? tls;         // TLS settings
-  final CaddyStorageConfig? storage; // S3 storage config
-  final String? rawJson;             // Raw JSON override
-}
-```
-
-#### `CaddyStatus` (sealed union)
-- `CaddyStopped()` - Server is not running
-- `CaddyRunning(String config, DateTime startedAt)` - Server running with config
-- `CaddyError(String message)` - Server encountered error
-- `CaddyLoading()` - Transitioning state
-
-#### `SavedCaddyConfig` (from `app_database`)
-Database model for persisted configs:
-```dart
-@DataClassName('SavedCaddyConfig')
-class CaddyConfigs extends Table {
-  IntColumn get id => integer().autoIncrement()();
-  TextColumn get name => text().unique()();
-  TextColumn get configJson => text()();
-  BoolColumn get adminEnabled => boolean().withDefault(const Constant(false))();
-  BoolColumn get isActive => boolean().withDefault(const Constant(false))();
-  DateTimeColumn get createdAt => dateTime().withDefault(currentDateAndTime)();
-}
-```
+1. BLoC reads vault entries prefixed with `caddy_`
+2. Strips prefix: `caddy_CF_API_TOKEN` → `CF_API_TOKEN`
+3. Passes as environment map to `CaddyService.start()`
+4. Service calls `SetEnvironment()` on native bridge before loading config
+5. Caddy config references secrets via `{env.VARIABLE_NAME}` placeholders
 
 ### State Flow
 
-1. **App Launch** → `CaddyBloc` initialized with `CaddyService`
-2. **User taps "Start"** → `CaddyStart` event dispatched
-3. **Bloc** → Calls `service.start(config)` → Emits `CaddyRunning` state
-4. **UI** → Rebuilds with running status, shows Stop/Reload buttons
-5. **Log streaming** → `service.logStream` → `CaddyLogReceived` events → Appended to `state.logs`
-6. **Config save** → `CaddySaveConfig` event → Persists to database via `AppDatabase.upsertCaddyConfig`
-7. **Config load** → `CaddyLoadNamedConfig` event → Reads from database → Updates `state.config`
+1. **App Launch** → `CaddyInitialize` → detect orphaned instances, load saved configs
+2. **User taps Start** → `CaddyStart` → inject secrets → `service.start()` → `CaddyRunning`
+3. **Log streaming** → `service.logStream` → `CaddyLogReceived` → append to rolling buffer
+4. **Config save** → `CaddySaveConfig` → persist to database via `AppDatabase`
+5. **App backgrounded** → `CaddyLifecyclePause` → optionally stop Caddy
+6. **App resumed** → `CaddyLifecycleResume` → optionally restart with saved config
 
-### Testing Strategy
-
-#### Widget Tests
-- **Screen rendering** - Verify widgets appear
-- **State-driven UI** - Mock BLoC states, verify UI updates
-- **User interactions** - Tap buttons, verify events dispatched
-- **Accessibility** - Semantic labels for screen readers
-
-#### BLoC Tests (using `bloc_test`)
-```dart
-blocTest<CaddyBloc, CaddyState>(
-  'CaddyStart transitions to running state',
-  build: () => CaddyBloc(MockCaddyService()),
-  act: (bloc) => bloc.add(CaddyStart(const CaddyConfig())),
-  expect: () => [
-    isA<CaddyState>().having((s) => s.status, 'status', isA<CaddyLoading>()),
-    isA<CaddyState>().having((s) => s.status, 'status', isA<CaddyRunning>()),
-  ],
-);
-```
-
-#### Database Tests
-- CRUD operations on `CaddyConfigs` table
-- Active config detection
-- Unique name constraint enforcement
-
-## Next Steps for Contributors
-
-### High Priority
-1. **Implement Go Bridge** - Build `caddy_bridge/` with cgo/gomobile
-2. **Platform Channel Integration** - Wire up Android and Linux first
-3. **xcaddy Build** - Add DNS and S3 modules to Makefile
-
-### Medium Priority
-4. **Error Recovery** - Port-in-use detection, crash recovery UX
-5. **Integration Tests** - Multi-screen flows, end-to-end scenarios
-6. **Performance** - Profile log rendering, optimize large config editing
-
-### Low Priority
-7. **Background Service** - Android foreground service for persistent Caddy
-8. **iOS Port** - Requires App Store policy review for web server apps
-9. **Caddyfile Support** - Embed Caddyfile adapter for text-based config
-
-## Development Commands
+## Build
 
 ```bash
-# Setup
-melos bootstrap
-mason get
+# Full setup
+make setup
 
-# Run app (mockup mode)
-flutter run
+# Build Go bridge
+make bridge-linux    # Linux .so
+make bridge-macos    # macOS .dylib
+make bridge-android  # Android .aar
+make bridge-test     # Run Go tests
 
-# Run tests
-melos run test
+# Build Flutter app (includes Go bridge)
+make build-linux
+make build-macos
 
-# Analysis
-melos run analyze
-
-# Format
-melos run format
+# Quality checks
+make test            # All Flutter/Dart tests
+make analyze         # Static analysis
+make ci              # analyze + test
 ```
+
+## CI/CD
+
+- **ci.yml** — Format check, analyze, test, Linux build (on push/PR)
+- **go-bridge.yml** — Go vet, tests, multi-platform compilation (on go/ changes)
+- **release.yml** — Manual release builds for all platforms
+- **deploy.yml** — Store deployment (Play Store, TestFlight)
 
 ## Contributing
 
@@ -282,11 +161,10 @@ melos run format
 2. Use `/project-development` skill to choose the right workflow
 3. Follow BLoC pattern for state management
 4. Add tests for new features
-5. Update this guide when adding major features
+5. Run `make ci` before submitting
 
 ## Resources
 
-- [PRD](../PRD.md) - Product Requirements Document
-- [CLAUDE.md](../CLAUDE.md) - Claude Code integration guide
-- [Caddy Docs](https://caddyserver.com/docs/) - Official Caddy documentation
-- [xcaddy](https://github.com/caddyserver/xcaddy) - Caddy module builder
+- [PRD](../PRD.md) — Product Requirements Document
+- [CLAUDE.md](../CLAUDE.md) — Development conventions
+- [Caddy Docs](https://caddyserver.com/docs/) — Official Caddy documentation
