@@ -53,7 +53,9 @@ class CaddyFfi {
     final configPtr = configJSON.toNativeUtf8();
     try {
       final resultPtr = _startCaddy(configPtr);
-      return resultPtr.toDartString();
+      final result = resultPtr.toDartString();
+      calloc.free(resultPtr);
+      return result;
     } finally {
       calloc.free(configPtr);
     }
@@ -61,14 +63,18 @@ class CaddyFfi {
 
   String stop() {
     final resultPtr = _stopCaddy();
-    return resultPtr.toDartString();
+    final result = resultPtr.toDartString();
+    calloc.free(resultPtr);
+    return result;
   }
 
   String reload(String configJSON) {
     final configPtr = configJSON.toNativeUtf8();
     try {
       final resultPtr = _reloadCaddy(configPtr);
-      return resultPtr.toDartString();
+      final result = resultPtr.toDartString();
+      calloc.free(resultPtr);
+      return result;
     } finally {
       calloc.free(configPtr);
     }
@@ -76,14 +82,18 @@ class CaddyFfi {
 
   String status() {
     final resultPtr = _getCaddyStatus();
-    return resultPtr.toDartString();
+    final result = resultPtr.toDartString();
+    calloc.free(resultPtr);
+    return result;
   }
 
   String setEnvironment(String envJSON) {
     final envPtr = envJSON.toNativeUtf8();
     try {
       final resultPtr = _setEnvironment(envPtr);
-      return resultPtr.toDartString();
+      final result = resultPtr.toDartString();
+      calloc.free(resultPtr);
+      return result;
     } finally {
       calloc.free(envPtr);
     }
