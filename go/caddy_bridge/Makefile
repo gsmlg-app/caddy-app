@@ -1,4 +1,4 @@
-.PHONY: android ios linux macos clean tidy
+.PHONY: android ios linux macos clean tidy test
 
 LDFLAGS := -ldflags="-s -w"
 
@@ -20,6 +20,9 @@ linux: tidy
 
 macos: tidy
 	CGO_ENABLED=1 go build -buildmode=c-shared $(LDFLAGS) -o build/libcaddy_bridge.dylib ./
+
+test:
+	CGO_ENABLED=1 go test -v -count=1 ./...
 
 clean:
 	rm -rf build/
