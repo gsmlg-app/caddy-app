@@ -518,10 +518,10 @@ class _SimpleConfigForm extends StatelessWidget {
             ),
             const SizedBox(height: 8),
             if (state.config.routes.isEmpty)
-              const Card(
+              Card(
                 child: Padding(
-                  padding: EdgeInsets.all(16),
-                  child: Text('No routes configured'),
+                  padding: const EdgeInsets.all(16),
+                  child: Text(context.l10n.caddyNoRoutesConfigured),
                 ),
               ),
             if (state.config.routes.isNotEmpty)

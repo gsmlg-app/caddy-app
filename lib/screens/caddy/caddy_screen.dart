@@ -449,7 +449,7 @@ class _ConfigSummary extends StatelessWidget {
     final semanticLabel =
         '${context.l10n.caddyConfig}. '
         '${context.l10n.caddyListenAddress(state.config.listenAddress)}. '
-        'Routes: ${state.config.routes.length}';
+        '${context.l10n.caddyRoutesCount(state.config.routes.length)}';
 
     return Semantics(
       label: semanticLabel,
@@ -484,7 +484,7 @@ class _ConfigSummary extends StatelessWidget {
               ),
               const SizedBox(height: 8),
               Text(context.l10n.caddyListenAddress(state.config.listenAddress)),
-              Text('Routes: ${state.config.routes.length}'),
+              Text(context.l10n.caddyRoutesCount(state.config.routes.length)),
             ],
           ),
         ),

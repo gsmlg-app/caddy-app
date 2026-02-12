@@ -234,5 +234,14 @@
   "caddyCopyLogs": "Copy logs",
   "caddyClearLogs": "Clear logs",
   "caddyLogsCopied": "Logs copied to clipboard",
+  "caddyNoRoutesConfigured": "No routes configured",
+  "caddyRoutesCount": "Routes: {count}",
+  "@caddyRoutesCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
   "@@description": "App description"
 }
