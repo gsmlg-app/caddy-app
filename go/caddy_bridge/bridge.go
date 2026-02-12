@@ -6,8 +6,14 @@ import "C"
 import (
 	"encoding/json"
 	"os"
+	"sync"
 
 	"github.com/caddyserver/caddy/v2"
+)
+
+var (
+	isRunning bool
+	mu        sync.RWMutex
 )
 
 //export SetEnvironment
@@ -32,6 +38,9 @@ func StartCaddy(configJSON *C.char) *C.char {
 	if err != nil {
 		return C.CString(err.Error())
 	}
+	mu.Lock()
+	isRunning = true
+	mu.Unlock()
 	return C.CString("")
 }
 
@@ -41,6 +50,9 @@ func StopCaddy() *C.char {
 	if err != nil {
 		return C.CString(err.Error())
 	}
+	mu.Lock()
+	isRunning = false
+	mu.Unlock()
 	return C.CString("")
 }
 
@@ -56,8 +68,11 @@ func ReloadCaddy(configJSON *C.char) *C.char {
 
 //export GetCaddyStatus
 func GetCaddyStatus() *C.char {
-	cfg := caddy.ActiveContext().Cfg
-	if cfg == nil {
+	mu.RLock()
+	running := isRunning
+	mu.RUnlock()
+
+	if !running {
 		result, _ := json.Marshal(map[string]string{"status": "stopped"})
 		return C.CString(string(result))
 	}

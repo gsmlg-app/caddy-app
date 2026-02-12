@@ -5,8 +5,14 @@ package caddy_bridge
 import (
 	"encoding/json"
 	"os"
+	"sync"
 
 	"github.com/caddyserver/caddy/v2"
+)
+
+var (
+	isRunning bool
+	mu        sync.RWMutex
 )
 
 func SetEnvironment(envJSON string) string {
@@ -27,6 +33,9 @@ func StartCaddy(configJSON string) string {
 	if err != nil {
 		return err.Error()
 	}
+	mu.Lock()
+	isRunning = true
+	mu.Unlock()
 	return ""
 }
 
@@ -35,6 +44,9 @@ func StopCaddy() string {
 	if err != nil {
 		return err.Error()
 	}
+	mu.Lock()
+	isRunning = false
+	mu.Unlock()
 	return ""
 }
 
@@ -47,8 +59,11 @@ func ReloadCaddy(configJSON string) string {
 }
 
 func GetCaddyStatus() string {
-	cfg := caddy.ActiveContext().Cfg
-	if cfg == nil {
+	mu.RLock()
+	running := isRunning
+	mu.RUnlock()
+
+	if !running {
 		result, _ := json.Marshal(map[string]string{"status": "stopped"})
 		return string(result)
 	}
