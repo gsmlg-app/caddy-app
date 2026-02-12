@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:app_locale/app_locale.dart';
+import 'package:app_logging/app_logging.dart';
 import 'package:caddy_bloc/caddy_bloc.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -75,19 +76,19 @@ class _CaddyLogScreenState extends State<CaddyLogScreen> {
           ),
           IconButton(
             icon: Icon(_autoScroll ? Icons.lock : Icons.lock_open),
-            tooltip: 'Auto-scroll',
+            tooltip: context.l10n.caddyAutoScrollToggle,
             onPressed: () => setState(() => _autoScroll = !_autoScroll),
           ),
           IconButton(
             icon: const Icon(Icons.copy),
-            tooltip: 'Copy logs',
+            tooltip: context.l10n.caddyCopyLogs,
             onPressed: () {
               final logs = context.read<CaddyBloc>().state.filteredLogs.join(
                 '\n',
               );
               Clipboard.setData(ClipboardData(text: logs));
               ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Logs copied to clipboard')),
+                SnackBar(content: Text(context.l10n.caddyLogsCopied)),
               );
             },
           ),
@@ -115,7 +116,8 @@ class _CaddyLogScreenState extends State<CaddyLogScreen> {
                     ),
                   );
                 }
-              } catch (_) {
+              } catch (e, stackTrace) {
+                AppLogger().e('Failed to export logs', e, stackTrace);
                 if (context.mounted) {
                   ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(content: Text(context.l10n.caddyLogsExportFailed)),
@@ -126,7 +128,7 @@ class _CaddyLogScreenState extends State<CaddyLogScreen> {
           ),
           IconButton(
             icon: const Icon(Icons.delete),
-            tooltip: 'Clear logs',
+            tooltip: context.l10n.caddyClearLogs,
             onPressed: () {
               context.read<CaddyBloc>().add(const CaddyClearLogs());
             },

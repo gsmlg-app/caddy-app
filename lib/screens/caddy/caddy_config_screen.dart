@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:app_locale/app_locale.dart';
+import 'package:app_logging/app_logging.dart';
 import 'package:caddy_bloc/caddy_bloc.dart';
 import 'package:caddy_service/caddy_service.dart';
 import 'package:flutter/material.dart';
@@ -215,7 +216,8 @@ class _CaddyConfigScreenState extends State<CaddyConfigScreen>
           SnackBar(content: Text(context.l10n.caddyConfigExported(file.path))),
         );
       }
-    } catch (_) {
+    } catch (e, stackTrace) {
+      AppLogger().e('Failed to export config', e, stackTrace);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text(context.l10n.caddyConfigExportFailed)),

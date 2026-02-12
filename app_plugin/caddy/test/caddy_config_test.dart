@@ -266,20 +266,18 @@ void main() {
       expect(config.listenAddress, 'localhost:8080');
       expect(config.routes, hasLength(1));
       expect(config.routes.first.handler, isA<ReverseProxyHandler>());
-      expect(
-        (config.routes.first.handler as ReverseProxyHandler).upstreams,
-        ['localhost:3000'],
-      );
+      expect((config.routes.first.handler as ReverseProxyHandler).upstreams, [
+        'localhost:3000',
+      ]);
     });
 
     test('reverseProxy with custom upstream', () {
       final config = CaddyConfigPresets.reverseProxy(
         upstream: 'localhost:4000',
       );
-      expect(
-        (config.routes.first.handler as ReverseProxyHandler).upstreams,
-        ['localhost:4000'],
-      );
+      expect((config.routes.first.handler as ReverseProxyHandler).upstreams, [
+        'localhost:4000',
+      ]);
     });
 
     test('spaServer creates config with rawJson', () {
@@ -297,8 +295,7 @@ void main() {
       expect(config.rawJson, isNotNull);
 
       final json = config.toJson();
-      final routes =
-          json['apps']['http']['servers']['srv0']['routes'] as List;
+      final routes = json['apps']['http']['servers']['srv0']['routes'] as List;
       expect(routes, hasLength(2));
     });
 
@@ -467,11 +464,10 @@ void main() {
       expect(policies, hasLength(1));
       final policy = policies.first as Map<String, dynamic>;
       expect(policy['subjects'], ['example.com']);
-      final issuer =
-          (policy['issuers'] as List).first as Map<String, dynamic>;
+      final issuer = (policy['issuers'] as List).first as Map<String, dynamic>;
       expect(issuer['module'], 'acme');
-      final provider = issuer['challenges']['dns']['provider']
-          as Map<String, dynamic>;
+      final provider =
+          issuer['challenges']['dns']['provider'] as Map<String, dynamic>;
       expect(provider['name'], 'cloudflare');
       expect(provider['api_token'], '{env.CF_API_TOKEN}');
     });
@@ -479,37 +475,26 @@ void main() {
     test('toJson includes Route53 credentials for route53 provider', () {
       const config = CaddyConfig(
         listenAddress: ':443',
-        tls: CaddyTlsConfig(
-          enabled: true,
-          dnsProvider: DnsProvider.route53,
-        ),
+        tls: CaddyTlsConfig(enabled: true, dnsProvider: DnsProvider.route53),
       );
 
       final json = config.toJson();
-      final policies =
-          json['apps']['tls']['automation']['policies'] as List;
+      final policies = json['apps']['tls']['automation']['policies'] as List;
       final issuer = (policies.first as Map)['issuers'][0] as Map;
       final provider = issuer['challenges']['dns']['provider'] as Map;
       expect(provider['name'], 'route53');
       expect(provider['access_key_id'], '{env.AWS_ACCESS_KEY_ID}');
-      expect(
-        provider['secret_access_key'],
-        '{env.AWS_SECRET_ACCESS_KEY}',
-      );
+      expect(provider['secret_access_key'], '{env.AWS_SECRET_ACCESS_KEY}');
     });
 
     test('toJson includes DuckDNS token for duckdns provider', () {
       const config = CaddyConfig(
         listenAddress: ':443',
-        tls: CaddyTlsConfig(
-          enabled: true,
-          dnsProvider: DnsProvider.duckdns,
-        ),
+        tls: CaddyTlsConfig(enabled: true, dnsProvider: DnsProvider.duckdns),
       );
 
       final json = config.toJson();
-      final policies =
-          json['apps']['tls']['automation']['policies'] as List;
+      final policies = json['apps']['tls']['automation']['policies'] as List;
       final issuer = (policies.first as Map)['issuers'][0] as Map;
       final provider = issuer['challenges']['dns']['provider'] as Map;
       expect(provider['name'], 'duckdns');
@@ -529,10 +514,7 @@ void main() {
     test('toJson excludes TLS when provider is none', () {
       const config = CaddyConfig(
         listenAddress: ':443',
-        tls: CaddyTlsConfig(
-          enabled: true,
-          dnsProvider: DnsProvider.none,
-        ),
+        tls: CaddyTlsConfig(enabled: true, dnsProvider: DnsProvider.none),
       );
 
       final json = config.toJson();
@@ -588,10 +570,7 @@ void main() {
           domain: 'test.com',
           dnsProvider: DnsProvider.cloudflare,
         ),
-        storage: CaddyStorageConfig(
-          enabled: true,
-          bucket: 'test-bucket',
-        ),
+        storage: CaddyStorageConfig(enabled: true, bucket: 'test-bucket'),
       );
 
       final json = config.toStorageJson();
@@ -635,12 +614,8 @@ void main() {
     });
 
     test('equatable includes TLS and storage in comparison', () {
-      const config1 = CaddyConfig(
-        tls: CaddyTlsConfig(enabled: true),
-      );
-      const config2 = CaddyConfig(
-        tls: CaddyTlsConfig(enabled: false),
-      );
+      const config1 = CaddyConfig(tls: CaddyTlsConfig(enabled: true));
+      const config2 = CaddyConfig(tls: CaddyTlsConfig(enabled: false));
       expect(config1, isNot(equals(config2)));
     });
 
@@ -655,8 +630,7 @@ void main() {
       );
 
       final json = config.toJson();
-      final policies =
-          json['apps']['tls']['automation']['policies'] as List;
+      final policies = json['apps']['tls']['automation']['policies'] as List;
       final policy = policies.first as Map<String, dynamic>;
       expect(policy.containsKey('subjects'), isFalse);
     });
@@ -714,6 +688,205 @@ void main() {
       expect(config.tls.domain, 'custom.com');
       expect(config.tls.dnsProvider, DnsProvider.route53);
       expect(config.storage.bucket, 'custom-bucket');
+    });
+  });
+
+  group('CaddyConfig edge cases', () {
+    test('toJson with multiple routes generates all route entries', () {
+      const config = CaddyConfig(
+        listenAddress: 'localhost:8080',
+        routes: [
+          CaddyRoute(
+            path: '/*',
+            handler: StaticFileHandler(root: '/var/www'),
+          ),
+          CaddyRoute(
+            path: '/api/*',
+            handler: ReverseProxyHandler(upstreams: ['localhost:3000']),
+          ),
+          CaddyRoute(
+            path: '/ws/*',
+            handler: ReverseProxyHandler(
+              upstreams: ['localhost:4000', 'localhost:4001'],
+            ),
+          ),
+        ],
+      );
+
+      final json = config.toJson();
+      final routes = json['apps']['http']['servers']['srv0']['routes'] as List;
+      expect(routes, hasLength(3));
+    });
+
+    test('ReverseProxyHandler with multiple upstreams generates all dials', () {
+      const handler = ReverseProxyHandler(
+        upstreams: ['host1:3000', 'host2:3000', 'host3:3000'],
+      );
+      final json = handler.toJson();
+      final upstreams = json['upstreams'] as List;
+      expect(upstreams, hasLength(3));
+      expect(upstreams[0], {'dial': 'host1:3000'});
+      expect(upstreams[1], {'dial': 'host2:3000'});
+      expect(upstreams[2], {'dial': 'host3:3000'});
+    });
+
+    test('CaddyHandler fromJson with missing root defaults to dot', () {
+      final handler = CaddyHandler.fromJson({'type': 'unknown_handler'});
+      expect(handler, isA<StaticFileHandler>());
+      expect((handler as StaticFileHandler).root, '.');
+    });
+
+    test('CaddyConfig fromJson with null routes returns empty list', () {
+      final config = CaddyConfig.fromJson({'listenAddress': 'localhost:8080'});
+      expect(config.routes, isEmpty);
+    });
+
+    test('CaddyConfig fromJson with null tls returns default', () {
+      final config = CaddyConfig.fromJson({'listenAddress': 'localhost:8080'});
+      expect(config.tls, const CaddyTlsConfig());
+    });
+
+    test('CaddyConfig fromJson with null storage returns default', () {
+      final config = CaddyConfig.fromJson({'listenAddress': 'localhost:8080'});
+      expect(config.storage, const CaddyStorageConfig());
+    });
+
+    test('CaddyConfig fromJson with missing listenAddress uses default', () {
+      final config = CaddyConfig.fromJson(<String, dynamic>{});
+      expect(config.listenAddress, 'localhost:2015');
+    });
+
+    test('CaddyTlsConfig fromJson with null fields uses defaults', () {
+      final tls = CaddyTlsConfig.fromJson(<String, dynamic>{});
+      expect(tls.enabled, isFalse);
+      expect(tls.domain, isEmpty);
+      expect(tls.dnsProvider, DnsProvider.none);
+    });
+
+    test('CaddyStorageConfig fromJson with null fields uses defaults', () {
+      final s3 = CaddyStorageConfig.fromJson(<String, dynamic>{});
+      expect(s3.enabled, isFalse);
+      expect(s3.endpoint, isEmpty);
+      expect(s3.bucket, isEmpty);
+      expect(s3.region, isEmpty);
+      expect(s3.prefix, 'caddy/');
+    });
+
+    test('toStorageJson round-trips TLS and storage correctly', () {
+      const original = CaddyConfig(
+        listenAddress: 'localhost:9090',
+        tls: CaddyTlsConfig(
+          enabled: true,
+          domain: 'test.io',
+          dnsProvider: DnsProvider.duckdns,
+        ),
+        storage: CaddyStorageConfig(
+          enabled: true,
+          endpoint: 'minio:9000',
+          bucket: 'certs',
+          region: 'us-west-2',
+          prefix: 'caddy/',
+        ),
+      );
+
+      final storageJson = original.toStorageJson();
+      final restored = CaddyConfig.fromJson(storageJson);
+
+      expect(restored.listenAddress, original.listenAddress);
+      expect(restored.tls, original.tls);
+      expect(restored.storage, original.storage);
+    });
+
+    test('toStorageJson preserves route paths', () {
+      const original = CaddyConfig(
+        listenAddress: 'localhost:9090',
+        routes: [
+          CaddyRoute(
+            path: '/files/*',
+            handler: StaticFileHandler(root: '/srv/files'),
+          ),
+          CaddyRoute(
+            path: '/api/*',
+            handler: ReverseProxyHandler(upstreams: ['backend:3000']),
+          ),
+        ],
+      );
+
+      final storageJson = original.toStorageJson();
+      final routes = storageJson['routes'] as List;
+      expect(routes, hasLength(2));
+      expect((routes[0] as Map)['path'], '/files/*');
+      expect((routes[1] as Map)['path'], '/api/*');
+    });
+
+    test('DnsProvider enum has all expected values', () {
+      expect(DnsProvider.values, hasLength(4));
+      expect(DnsProvider.values, contains(DnsProvider.none));
+      expect(DnsProvider.values, contains(DnsProvider.cloudflare));
+      expect(DnsProvider.values, contains(DnsProvider.route53));
+      expect(DnsProvider.values, contains(DnsProvider.duckdns));
+    });
+
+    test('StaticFileHandler equatable compares root', () {
+      const h1 = StaticFileHandler(root: '/var/www');
+      const h2 = StaticFileHandler(root: '/var/www');
+      const h3 = StaticFileHandler(root: '/tmp');
+      expect(h1, equals(h2));
+      expect(h1, isNot(equals(h3)));
+    });
+
+    test('ReverseProxyHandler equatable compares upstreams', () {
+      const h1 = ReverseProxyHandler(upstreams: ['a:1', 'b:2']);
+      const h2 = ReverseProxyHandler(upstreams: ['a:1', 'b:2']);
+      const h3 = ReverseProxyHandler(upstreams: ['c:3']);
+      expect(h1, equals(h2));
+      expect(h1, isNot(equals(h3)));
+    });
+
+    test('CaddyTlsConfig equatable includes all fields', () {
+      const t1 = CaddyTlsConfig(
+        enabled: true,
+        domain: 'a.com',
+        dnsProvider: DnsProvider.cloudflare,
+      );
+      const t2 = CaddyTlsConfig(
+        enabled: true,
+        domain: 'a.com',
+        dnsProvider: DnsProvider.cloudflare,
+      );
+      const t3 = CaddyTlsConfig(
+        enabled: true,
+        domain: 'a.com',
+        dnsProvider: DnsProvider.route53,
+      );
+      expect(t1, equals(t2));
+      expect(t1, isNot(equals(t3)));
+    });
+
+    test('CaddyStorageConfig equatable includes all fields', () {
+      const s1 = CaddyStorageConfig(
+        enabled: true,
+        endpoint: 'e',
+        bucket: 'b',
+        region: 'r',
+        prefix: 'p',
+      );
+      const s2 = CaddyStorageConfig(
+        enabled: true,
+        endpoint: 'e',
+        bucket: 'b',
+        region: 'r',
+        prefix: 'p',
+      );
+      const s3 = CaddyStorageConfig(
+        enabled: true,
+        endpoint: 'e',
+        bucket: 'different',
+        region: 'r',
+        prefix: 'p',
+      );
+      expect(s1, equals(s2));
+      expect(s1, isNot(equals(s3)));
     });
   });
 }

@@ -229,5 +229,10 @@
   "homeGoToLogs": "Logs",
   "homeGoToSecrets": "Secrets",
   "caddyLogLineCopied": "Log line copied",
+  "caddyQuickAdd": "Quick Add",
+  "caddyAutoScrollToggle": "Auto-scroll",
+  "caddyCopyLogs": "Copy logs",
+  "caddyClearLogs": "Clear logs",
+  "caddyLogsCopied": "Logs copied to clipboard",
   "@@description": "App description"
 }

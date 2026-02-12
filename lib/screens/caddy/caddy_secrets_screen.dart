@@ -19,12 +19,16 @@ class _CaddySecretsScreenState extends State<CaddySecretsScreen> {
   late final VaultRepository _vault;
   Map<String, String> _secrets = {};
   bool _loading = true;
+  bool _initialized = false;
 
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    _vault = context.read<VaultRepository>();
-    _loadSecrets();
+    if (!_initialized) {
+      _initialized = true;
+      _vault = context.read<VaultRepository>();
+      _loadSecrets();
+    }
   }
 
   Future<void> _loadSecrets() async {
@@ -237,7 +241,7 @@ class _CaddySecretsScreenState extends State<CaddySecretsScreen> {
                 ),
                 const Divider(height: 32),
                 Text(
-                  'Quick Add',
+                  context.l10n.caddyQuickAdd,
                   style: Theme.of(context).textTheme.titleSmall,
                 ),
                 const SizedBox(height: 8),
