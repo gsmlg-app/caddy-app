@@ -295,13 +295,24 @@ sealed class CaddyHandler extends Equatable {
   const CaddyHandler();
 
   factory CaddyHandler.fromJson(Map<String, dynamic> json) {
-    return switch (json['type']) {
-      'static_files' => StaticFileHandler(root: json['root'] as String),
+    final type = json['handler'] as String? ?? json['type'] as String?;
+    return switch (type) {
+      'file_server' ||
+      'static_files' => StaticFileHandler(root: json['root'] as String? ?? '.'),
       'reverse_proxy' => ReverseProxyHandler(
-        upstreams: (json['upstreams'] as List<dynamic>).cast<String>(),
+        upstreams: _parseUpstreams(json['upstreams']),
       ),
       _ => StaticFileHandler(root: json['root'] as String? ?? '.'),
     };
+  }
+
+  static List<String> _parseUpstreams(dynamic upstreams) {
+    if (upstreams is! List) return <String>[];
+    return upstreams.map<String>((item) {
+      if (item is String) return item;
+      if (item is Map) return item['dial'] as String? ?? '';
+      return '';
+    }).toList();
   }
 
   Map<String, dynamic> toJson();

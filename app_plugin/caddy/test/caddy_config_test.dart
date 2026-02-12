@@ -863,6 +863,63 @@ void main() {
       expect(t1, isNot(equals(t3)));
     });
 
+    test('toStorageJson round-trips handler types correctly', () {
+      const original = CaddyConfig(
+        listenAddress: 'localhost:9090',
+        routes: [
+          CaddyRoute(
+            path: '/files/*',
+            handler: StaticFileHandler(root: '/srv/files'),
+          ),
+          CaddyRoute(
+            path: '/api/*',
+            handler: ReverseProxyHandler(upstreams: ['backend:3000']),
+          ),
+        ],
+      );
+
+      final storageJson = original.toStorageJson();
+      final restored = CaddyConfig.fromJson(storageJson);
+
+      expect(restored.routes, hasLength(2));
+      expect(restored.routes[0].handler, isA<StaticFileHandler>());
+      expect(
+        (restored.routes[0].handler as StaticFileHandler).root,
+        '/srv/files',
+      );
+      expect(restored.routes[1].handler, isA<ReverseProxyHandler>());
+      expect((restored.routes[1].handler as ReverseProxyHandler).upstreams, [
+        'backend:3000',
+      ]);
+    });
+
+    test('CaddyHandler fromJson accepts handler key (toJson format)', () {
+      final handler = CaddyHandler.fromJson({
+        'handler': 'file_server',
+        'root': '/var/www',
+      });
+      expect(handler, isA<StaticFileHandler>());
+      expect((handler as StaticFileHandler).root, '/var/www');
+    });
+
+    test('CaddyHandler fromJson accepts handler key for reverse_proxy', () {
+      final handler = CaddyHandler.fromJson({
+        'handler': 'reverse_proxy',
+        'upstreams': ['localhost:3000'],
+      });
+      expect(handler, isA<ReverseProxyHandler>());
+      expect((handler as ReverseProxyHandler).upstreams, ['localhost:3000']);
+    });
+
+    test('CaddyHandler fromJson prefers handler key over type key', () {
+      final handler = CaddyHandler.fromJson({
+        'handler': 'file_server',
+        'type': 'reverse_proxy',
+        'root': '/var/www',
+      });
+      expect(handler, isA<StaticFileHandler>());
+    });
+
     test('CaddyStorageConfig equatable includes all fields', () {
       const s1 = CaddyStorageConfig(
         enabled: true,

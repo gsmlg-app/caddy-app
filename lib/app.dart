@@ -1,11 +1,11 @@
 import 'package:app_locale/app_locale.dart';
+import 'package:app_logging/app_logging.dart';
 import 'package:app_provider/app_provider.dart';
 import 'package:caddy_bloc/caddy_bloc.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:theme_bloc/theme_bloc.dart';
 
-import 'destination.dart';
 import 'router.dart';
 
 class App extends StatefulWidget {
@@ -37,8 +37,8 @@ class _AppState extends State<App> with WidgetsBindingObserver {
       } else if (state == AppLifecycleState.resumed) {
         caddyBloc.add(const CaddyLifecycleResume());
       }
-    } catch (_) {
-      // CaddyBloc may not be available yet during early lifecycle
+    } catch (e) {
+      AppLogger().d('CaddyBloc not available during lifecycle event: $e');
     }
   }
 
@@ -64,8 +64,6 @@ class _AppContent extends StatelessWidget {
   Widget build(BuildContext context) {
     final router = AppRouter.router;
     return AppBlocProvider(
-      navigatorKey: AppRouter.key,
-      routeNames: Destinations.routeNames,
       child: MaterialApp.router(
         key: const Key('app'),
         debugShowCheckedModeBanner: false,

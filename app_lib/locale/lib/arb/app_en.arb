@@ -243,5 +243,32 @@
       }
     }
   },
+  "settingsAppSection": "App Setting",
+  "appNameLabel": "APP_NAME",
+  "notAvailable": "N/A",
+  "caddyStaticFilesSubtitle": "Static Files: {root}",
+  "@caddyStaticFilesSubtitle": {
+    "placeholders": {
+      "root": {
+        "type": "String"
+      }
+    }
+  },
+  "caddyReverseProxySubtitle": "Reverse Proxy: {upstreams}",
+  "@caddyReverseProxySubtitle": {
+    "placeholders": {
+      "upstreams": {
+        "type": "String"
+      }
+    }
+  },
+  "caddyRouteSectionTitle": "Routes ({count})",
+  "@caddyRouteSectionTitle": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
   "@@description": "App description"
 }

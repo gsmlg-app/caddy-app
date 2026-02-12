@@ -505,7 +505,9 @@ class _SimpleConfigForm extends StatelessWidget {
               children: [
                 Expanded(
                   child: Text(
-                    'Routes (${state.config.routes.length})',
+                    context.l10n.caddyRouteSectionTitle(
+                      state.config.routes.length,
+                    ),
                     style: Theme.of(context).textTheme.titleSmall,
                   ),
                 ),
@@ -550,9 +552,11 @@ class _SimpleConfigForm extends StatelessWidget {
                       title: Text(route.path),
                       subtitle: Text(switch (route.handler) {
                         StaticFileHandler(root: final root) =>
-                          'Static Files: $root',
+                          context.l10n.caddyStaticFilesSubtitle(root),
                         ReverseProxyHandler(upstreams: final upstreams) =>
-                          'Reverse Proxy: ${upstreams.join(', ')}',
+                          context.l10n.caddyReverseProxySubtitle(
+                            upstreams.join(', '),
+                          ),
                       }),
                       onTap: () => _showRouteDialog(
                         context,

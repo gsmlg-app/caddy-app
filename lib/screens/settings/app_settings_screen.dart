@@ -39,18 +39,18 @@ class AppSettingsScreen extends StatelessWidget {
                     return SettingsList(
                       sections: [
                         SettingsSection(
-                          title: Text('APP_NAME'),
+                          title: Text(context.l10n.appNameLabel),
                           tiles: <SettingsTile>[
                             SettingsTile(
                               leading: const Icon(Icons.api),
                               title: Center(
                                 child: Text(
-                                  'APP_NAME',
+                                  context.l10n.appNameLabel,
                                   textAlign: TextAlign.center,
                                 ),
                               ),
                               trailing: appName == null
-                                  ? Text('N/A')
+                                  ? Text(context.l10n.notAvailable)
                                   : Text(appName),
                               onPressed: (context) {
                                 showAppDialog(
