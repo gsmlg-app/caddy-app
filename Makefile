@@ -1,5 +1,5 @@
 .PHONY: help setup bridge-linux bridge-macos bridge-android bridge-test \
-       build-linux build-macos test analyze format clean
+       build-linux build-macos test test-coverage analyze format clean
 
 GO_BRIDGE := go/caddy_bridge
 
@@ -46,6 +46,9 @@ build-macos: bridge-macos ## Build Flutter app for macOS (includes Go bridge)
 
 test: ## Run all Flutter/Dart tests
 	melos run test
+
+test-coverage: ## Run tests with coverage collection
+	melos run test:coverage
 
 analyze: ## Run static analysis
 	melos run analyze

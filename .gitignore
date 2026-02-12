@@ -37,6 +37,9 @@ build/
 # Generated localization files
 **/gen_l10n/
 
+# Test coverage output
+**/coverage/
+
 # Symbolication related
 app.*.symbols
 

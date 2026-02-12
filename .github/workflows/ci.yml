@@ -110,8 +110,18 @@ jobs:
       - name: Prepare project
         run: melos run prepare
 
-      - name: Run tests
-        run: melos run test
+      - name: Run tests with coverage
+        run: melos run test:coverage
+
+      - name: Upload coverage artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage
+          path: |
+            **/coverage/lcov.info
+            **/coverage/*.json
+          retention-days: 7
 
   build:
     name: Build Linux
