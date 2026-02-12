@@ -55,6 +55,11 @@ mason-lock.json
 /.devenv*
 go/caddy_bridge/build/
 .go/
+
+# Native library copies for CI builds
+linux/libs/
+macos/libs/
+android/app/libs/*.aar
 /local.properties
 /.template-sync
 
