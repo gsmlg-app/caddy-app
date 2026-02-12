@@ -107,7 +107,11 @@ foreach(bundled_library ${PLUGIN_BUNDLED_LIBRARIES})
 endforeach(bundled_library)
 
 # Install the Caddy bridge shared library.
+# Check Go build directory first, then fallback to linux/libs/ (CI copy target).
 set(CADDY_BRIDGE_LIB "${CMAKE_CURRENT_SOURCE_DIR}/../go/caddy_bridge/build/libcaddy_bridge.so")
+if(NOT EXISTS "${CADDY_BRIDGE_LIB}")
+  set(CADDY_BRIDGE_LIB "${CMAKE_CURRENT_SOURCE_DIR}/libs/libcaddy_bridge.so")
+endif()
 if(EXISTS "${CADDY_BRIDGE_LIB}")
   install(FILES "${CADDY_BRIDGE_LIB}"
     DESTINATION "${INSTALL_BUNDLE_LIB_DIR}"
