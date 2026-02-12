@@ -97,5 +97,81 @@ void main() {
       expect(FlutterError.onError, isNotNull);
       expect(FlutterError.onError, isNot(equals(originalHandler)));
     });
+
+    test('error records contain raw field from decoding', () async {
+      await service.reportError(error: 'simple string error');
+
+      final errors = await service.getRecentErrors();
+      expect(errors, hasLength(1));
+      // _decodeErrorRecord wraps stored string in {'raw': json}
+      expect(errors.first, containsPair('raw', isA<String>()));
+    });
+
+    test('error record raw field contains error message', () async {
+      await service.reportError(error: Exception('specific message'));
+
+      final errors = await service.getRecentErrors();
+      expect(errors.first['raw'], contains('specific message'));
+    });
+
+    test('error record preserves context in stored data', () async {
+      await service.reportError(error: 'test', context: 'database operation');
+
+      final errors = await service.getRecentErrors();
+      expect(errors.first['raw'], contains('database operation'));
+    });
+
+    test('reportFlutterError stores library info', () async {
+      await service.reportFlutterError(
+        details: FlutterErrorDetails(
+          exception: Exception('render error'),
+          library: 'rendering library',
+        ),
+      );
+
+      final errors = await service.getRecentErrors();
+      expect(errors, hasLength(1));
+      expect(errors.first['raw'], contains('render error'));
+    });
+
+    test('max stored errors limit is enforced', () async {
+      // Report 110 errors (limit is 100)
+      for (var i = 0; i < 110; i++) {
+        await service.reportError(error: 'error_$i');
+      }
+
+      final errors = await service.getRecentErrors();
+      expect(errors.length, 100);
+      // Oldest errors should have been dropped
+      expect(errors.first['raw'], contains('error_10'));
+      expect(errors.last['raw'], contains('error_109'));
+    });
+
+    test('reportError with additionalData stores extra fields', () async {
+      await service.reportError(
+        error: 'test',
+        additionalData: {'user_id': '123', 'action': 'submit'},
+      );
+
+      final errors = await service.getRecentErrors();
+      expect(errors.first['raw'], contains('user_id'));
+      expect(errors.first['raw'], contains('123'));
+    });
+
+    test('reportError with stackTrace stores trace', () async {
+      final trace = StackTrace.current;
+      await service.reportError(error: 'traced error', stackTrace: trace);
+
+      final errors = await service.getRecentErrors();
+      expect(errors, hasLength(1));
+      expect(errors.first['raw'], contains('traced error'));
+    });
+
+    test('reportError with sendToBackend completes', () async {
+      await expectLater(
+        service.reportError(error: 'backend error', sendToBackend: true),
+        completes,
+      );
+    });
   });
 }
