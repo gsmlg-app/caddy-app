@@ -226,7 +226,7 @@ void main() {
 
     test('all themes have distinct color schemes', () {
       final primaryColors = themeList
-          .map((t) => t.lightTheme.colorScheme.primary.value)
+          .map((t) => t.lightTheme.colorScheme.primary.toARGB32())
           .toSet();
       expect(primaryColors, hasLength(4));
     });
