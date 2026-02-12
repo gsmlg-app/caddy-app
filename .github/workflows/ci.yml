@@ -140,6 +140,9 @@ jobs:
           key: ${{ runner.os }}-pub-${{ hashFiles('**/pubspec.lock') }}
           restore-keys: ${{ runner.os }}-pub-
 
+      - name: Run Go bridge tests
+        run: make -C go/caddy_bridge test
+
       - name: Build Caddy bridge (Linux)
         run: make -C go/caddy_bridge linux
 
