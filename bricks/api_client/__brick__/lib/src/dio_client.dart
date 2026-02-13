@@ -65,6 +65,9 @@ bool _shouldEnableLoggingByDefault() {
   }
 
   // Debug/Profile mode: check environment variable
-  const disableLog = String.fromEnvironment(_disableLogEnvKey, defaultValue: 'false');
+  const disableLog = String.fromEnvironment(
+    _disableLogEnvKey,
+    defaultValue: 'false',
+  );
   return disableLog.toLowerCase() != 'true';
 }

@@ -95,7 +95,9 @@ void main() {
       expect(AccentColorSettingsScreen.path, 'accent-color');
     });
 
-    testWidgets('dispatching ChangeTheme event changes the theme', (tester) async {
+    testWidgets('dispatching ChangeTheme event changes the theme', (
+      tester,
+    ) async {
       await tester.pumpWidget(_buildTestWidget(themeBloc: themeBloc));
 
       // Change to Fire theme via BLoC event

@@ -99,59 +99,66 @@ class _ServerStatusCard extends StatelessWidget {
           CaddyStopped() => (context.l10n.caddyStopped, Colors.grey),
         };
 
-        return Card(
-          child: Padding(
-            padding: const EdgeInsets.all(16),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    Icon(Icons.dns, color: statusColor),
-                    const SizedBox(width: 8),
+        return Semantics(
+          label: '${context.l10n.homeServerStatus}: $statusText',
+          child: Card(
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      ExcludeSemantics(
+                        child: Icon(Icons.dns, color: statusColor),
+                      ),
+                      const SizedBox(width: 8),
+                      Text(
+                        context.l10n.homeServerStatus,
+                        style: Theme.of(context).textTheme.titleMedium,
+                      ),
+                      const Spacer(),
+                      Chip(
+                        label: Text(statusText),
+                        backgroundColor: statusColor.withValues(alpha: 0.15),
+                        side: BorderSide(color: statusColor),
+                      ),
+                    ],
+                  ),
+                  if (isRunning) ...[
+                    const SizedBox(height: 8),
                     Text(
-                      context.l10n.homeServerStatus,
-                      style: Theme.of(context).textTheme.titleMedium,
+                      context.l10n.caddyListenAddress(
+                        state.config.listenAddress,
+                      ),
+                      style: Theme.of(context).textTheme.bodyMedium,
                     ),
-                    const Spacer(),
-                    Chip(
-                      label: Text(statusText),
-                      backgroundColor: statusColor.withValues(alpha: 0.15),
-                      side: BorderSide(color: statusColor),
+                    Text(
+                      '${state.config.routes.length} ${context.l10n.caddyActiveRoutes.toLowerCase()}',
+                      style: Theme.of(context).textTheme.bodyMedium,
                     ),
                   ],
-                ),
-                if (isRunning) ...[
-                  const SizedBox(height: 8),
-                  Text(
-                    context.l10n.caddyListenAddress(state.config.listenAddress),
-                    style: Theme.of(context).textTheme.bodyMedium,
-                  ),
-                  Text(
-                    '${state.config.routes.length} ${context.l10n.caddyActiveRoutes.toLowerCase()}',
-                    style: Theme.of(context).textTheme.bodyMedium,
-                  ),
-                ],
-                if (isStopped) ...[
-                  const SizedBox(height: 8),
-                  FilledButton.icon(
-                    onPressed: () {
-                      context.read<CaddyBloc>().add(CaddyStart(state.config));
-                    },
-                    icon: const Icon(Icons.play_arrow),
-                    label: Text(context.l10n.caddyStart),
-                  ),
-                ],
-                if (isError) ...[
-                  const SizedBox(height: 8),
-                  Text(
-                    (state.status as CaddyError).message,
-                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                      color: Theme.of(context).colorScheme.error,
+                  if (isStopped) ...[
+                    const SizedBox(height: 8),
+                    FilledButton.icon(
+                      onPressed: () {
+                        context.read<CaddyBloc>().add(CaddyStart(state.config));
+                      },
+                      icon: const Icon(Icons.play_arrow),
+                      label: Text(context.l10n.caddyStart),
                     ),
-                  ),
+                  ],
+                  if (isError) ...[
+                    const SizedBox(height: 8),
+                    Text(
+                      (state.status as CaddyError).message,
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        color: Theme.of(context).colorScheme.error,
+                      ),
+                    ),
+                  ],
                 ],
-              ],
+              ),
             ),
           ),
         );
@@ -211,23 +218,29 @@ class _QuickActionCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Card(
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(12),
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(
-                icon,
-                size: 32,
-                color: Theme.of(context).colorScheme.primary,
-              ),
-              const SizedBox(height: 8),
-              Text(label, style: Theme.of(context).textTheme.titleSmall),
-            ],
+    return Semantics(
+      button: true,
+      label: label,
+      child: Card(
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(12),
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                ExcludeSemantics(
+                  child: Icon(
+                    icon,
+                    size: 32,
+                    color: Theme.of(context).colorScheme.primary,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Text(label, style: Theme.of(context).textTheme.titleSmall),
+              ],
+            ),
           ),
         ),
       ),

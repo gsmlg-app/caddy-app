@@ -8,10 +8,7 @@ void main() {
     test('constructor loads library on supported platforms', () {
       // Skip on unsupported platforms (mobile, Windows, etc.)
       if (!Platform.isLinux && !Platform.isMacOS) {
-        expect(
-          () => CaddyFfi(),
-          throwsA(isA<UnsupportedError>()),
-        );
+        expect(() => CaddyFfi(), throwsA(isA<UnsupportedError>()));
         return;
       }
 
