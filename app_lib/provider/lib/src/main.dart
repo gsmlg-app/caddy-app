@@ -4,7 +4,6 @@ import 'package:caddy_bloc/caddy_bloc.dart';
 import 'package:caddy_service/caddy_service.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:gamepad_bloc/gamepad_bloc.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:theme_bloc/theme_bloc.dart';
 
@@ -51,18 +50,11 @@ class MainProvider extends StatelessWidget {
   }
 }
 
-/// Provider for GamepadBloc.
+/// Provider for app-level BLoCs.
 /// Must be used where navigation context is available.
 class AppBlocProvider extends StatefulWidget {
-  const AppBlocProvider({
-    super.key,
-    required this.navigatorKey,
-    required this.routeNames,
-    required this.child,
-  });
+  const AppBlocProvider({super.key, required this.child});
 
-  final GlobalKey<NavigatorState> navigatorKey;
-  final List<String> routeNames;
   final Widget child;
 
   @override
@@ -70,17 +62,11 @@ class AppBlocProvider extends StatefulWidget {
 }
 
 class _AppBlocProviderState extends State<AppBlocProvider> {
-  late final GamepadBloc _gamepadBloc;
   late final CaddyBloc _caddyBloc;
 
   @override
   void initState() {
     super.initState();
-    _gamepadBloc = GamepadBloc(
-      navigatorKey: widget.navigatorKey,
-      routeNames: widget.routeNames,
-    );
-    _gamepadBloc.add(const GamepadStartListening());
     _caddyBloc = CaddyBloc(
       CaddyService.instance,
       database: context.read<AppDatabase>(),
@@ -91,18 +77,14 @@ class _AppBlocProviderState extends State<AppBlocProvider> {
 
   @override
   void dispose() {
-    _gamepadBloc.close();
     _caddyBloc.close();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
-    return MultiBlocProvider(
-      providers: [
-        BlocProvider<GamepadBloc>.value(value: _gamepadBloc),
-        BlocProvider<CaddyBloc>.value(value: _caddyBloc),
-      ],
+    return BlocProvider<CaddyBloc>.value(
+      value: _caddyBloc,
       child: widget.child,
     );
   }

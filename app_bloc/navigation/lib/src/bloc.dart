@@ -10,7 +10,7 @@ part 'state.dart';
 ///
 /// This bloc manages the current navigation destination and provides
 /// events for navigation actions that can be triggered from anywhere
-/// in the app (including gamepad input, keyboard shortcuts, etc.)
+/// in the app (including keyboard shortcuts, etc.)
 class NavigationBloc extends Bloc<NavigationEvent, NavigationState> {
   NavigationBloc({
     required this.navigatorKey,

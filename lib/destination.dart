@@ -3,7 +3,6 @@ import 'package:flutter/material.dart';
 import 'package:caddy_app/screens/caddy/caddy_screen.dart';
 import 'package:caddy_app/screens/home/home_screen.dart';
 import 'package:caddy_app/screens/settings/settings_screen.dart';
-import 'package:caddy_app/screens/showcase/showcase_screen.dart';
 import 'package:go_router/go_router.dart';
 
 class Destinations {
@@ -11,7 +10,6 @@ class Destinations {
   static const List<String> routeNames = [
     HomeScreen.name,
     CaddyScreen.name,
-    ShowcaseScreen.name,
     SettingsScreen.name,
   ];
 
@@ -28,12 +26,6 @@ class Destinations {
           icon: const Icon(Icons.dns_outlined),
           selectedIcon: const Icon(Icons.dns),
           label: context.l10n.navCaddy,
-        ),
-        NavigationDestination(
-          key: const Key(ShowcaseScreen.name),
-          icon: const Icon(Icons.widgets_outlined),
-          selectedIcon: const Icon(Icons.widgets),
-          label: context.l10n.navShowcase,
         ),
         NavigationDestination(
           key: const Key(SettingsScreen.name),

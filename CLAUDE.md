@@ -22,8 +22,8 @@ Caddy App - A Flutter application for running and managing Caddy web server. Bui
 ```
 
 **Workspace packages** (defined in root `pubspec.yaml` `workspace:` section—there is no separate melos.yaml):
-- `app_lib/`: database, gamepad, theme, locale, provider, logging, secure_storage
-- `app_bloc/`: gamepad, navigation, theme
+- `app_lib/`: database, theme, locale, provider, logging, secure_storage
+- `app_bloc/`: navigation, theme
 - `app_widget/`: adaptive, artwork, chart, feedback, web_view
 - `app_form/`: demo
 - `app_plugin/`: client_info/ (nested federated plugin containing: client_info, client_info_platform_interface, client_info_android, client_info_ios, client_info_linux, client_info_macos, client_info_windows)
