@@ -56,10 +56,7 @@ class AppDatabase extends _$AppDatabase {
   Future<void> saveCaddyConfig(CaddyConfigsCompanion entry) =>
       into(caddyConfigs).insert(
         entry,
-        onConflict: DoUpdate(
-          (old) => entry,
-          target: [caddyConfigs.name],
-        ),
+        onConflict: DoUpdate((old) => entry, target: [caddyConfigs.name]),
       );
 
   Future<void> upsertCaddyConfig({
