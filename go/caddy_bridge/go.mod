@@ -3,7 +3,7 @@ module github.com/gsmlg-app/caddy-app/go/caddy_bridge
 go 1.25.0
 
 require (
-	github.com/caddy-dns/cloudflare v0.2.2
+	github.com/caddy-dns/cloudflare v0.2.3
 	github.com/caddy-dns/duckdns v0.5.0
 	github.com/caddy-dns/route53 v1.6.0
 	github.com/caddyserver/caddy/v2 v2.10.2
