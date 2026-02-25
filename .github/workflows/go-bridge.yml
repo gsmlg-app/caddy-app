@@ -105,7 +105,7 @@ jobs:
           cache-dependency-path: go/caddy_bridge/go.sum
 
       - name: Setup Java
-        uses: actions/setup-java@v4
+        uses: actions/setup-java@v5
         with:
           distribution: 'temurin'
           java-version: '17'
