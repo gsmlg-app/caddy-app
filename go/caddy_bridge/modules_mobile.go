@@ -6,6 +6,9 @@ package caddy_bridge
 // These modules are compiled into the gomobile library so that
 // Caddy JSON config can reference them at runtime.
 import (
+	// Caddy standard modules (HTTP server, TLS, headers, reverse_proxy, etc.).
+	_ "github.com/caddyserver/caddy/v2/modules/standard"
+
 	// DNS challenge providers for ACME TLS certificate issuance.
 	_ "github.com/caddy-dns/cloudflare"
 	_ "github.com/caddy-dns/duckdns"
