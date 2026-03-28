@@ -50,7 +50,7 @@ class CaddyService {
 
     try {
       if (_isDesktop) {
-        return _ffi!.setEnvironment(envJson);
+        return await _ffi!.setEnvironment(envJson);
       } else {
         return await _methodChannel!.setEnvironment(envJson);
       }
@@ -77,7 +77,7 @@ class CaddyService {
     try {
       final String error;
       if (_isDesktop) {
-        error = _ffi!.start(configJson);
+        error = await _ffi!.start(configJson);
       } else {
         error = await _methodChannel!.start(configJson);
       }
@@ -104,7 +104,7 @@ class CaddyService {
     try {
       final String error;
       if (_isDesktop) {
-        error = _ffi!.stop();
+        error = await _ffi!.stop();
       } else {
         error = await _methodChannel!.stop();
       }
@@ -137,7 +137,7 @@ class CaddyService {
     try {
       final String error;
       if (_isDesktop) {
-        error = _ffi!.reload(configJson);
+        error = await _ffi!.reload(configJson);
       } else {
         error = await _methodChannel!.reload(configJson);
       }
@@ -164,7 +164,7 @@ class CaddyService {
     try {
       final String result;
       if (_isDesktop) {
-        result = _ffi!.status();
+        result = await _ffi!.status();
       } else {
         result = await _methodChannel!.status();
       }

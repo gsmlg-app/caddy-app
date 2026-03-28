@@ -1,5 +1,6 @@
 import 'dart:ffi';
 import 'dart:io';
+import 'dart:isolate';
 
 import 'package:ffi/ffi.dart';
 
@@ -18,84 +19,106 @@ typedef _GetCaddyStatusDart = Pointer<Utf8> Function();
 typedef _SetEnvironmentC = Pointer<Utf8> Function(Pointer<Utf8> envJSON);
 typedef _SetEnvironmentDart = Pointer<Utf8> Function(Pointer<Utf8> envJSON);
 
+/// Runs the given FFI [action] in a separate isolate so the main (UI)
+/// isolate is never blocked by potentially long-running Go calls such as
+/// `caddy.Load()`.
+///
+/// The [action] receives the library path and must open the library itself
+/// because [DynamicLibrary] instances are not sendable across isolates.
+Future<String> _runInIsolate(String Function(String libPath) action) {
+  return Isolate.run(() => action(_libraryPath()));
+}
+
+String _libraryPath() {
+  if (Platform.isLinux) return 'libcaddy_bridge.so';
+  if (Platform.isMacOS) return 'libcaddy_bridge.dylib';
+  throw UnsupportedError(
+    'CaddyFfi is not supported on ${Platform.operatingSystem}',
+  );
+}
+
 class CaddyFfi {
-  CaddyFfi() : _lib = _loadLibrary();
-
-  final DynamicLibrary _lib;
-
-  late final _StartCaddyDart _startCaddy = _lib
-      .lookupFunction<_StartCaddyC, _StartCaddyDart>('StartCaddy');
-
-  late final _StopCaddyDart _stopCaddy = _lib
-      .lookupFunction<_StopCaddyC, _StopCaddyDart>('StopCaddy');
-
-  late final _ReloadCaddyDart _reloadCaddy = _lib
-      .lookupFunction<_ReloadCaddyC, _ReloadCaddyDart>('ReloadCaddy');
-
-  late final _GetCaddyStatusDart _getCaddyStatus = _lib
-      .lookupFunction<_GetCaddyStatusC, _GetCaddyStatusDart>('GetCaddyStatus');
-
-  late final _SetEnvironmentDart _setEnvironment = _lib
-      .lookupFunction<_SetEnvironmentC, _SetEnvironmentDart>('SetEnvironment');
-
-  static DynamicLibrary _loadLibrary() {
-    if (Platform.isLinux) {
-      return DynamicLibrary.open('libcaddy_bridge.so');
-    } else if (Platform.isMacOS) {
-      return DynamicLibrary.open('libcaddy_bridge.dylib');
-    }
-    throw UnsupportedError(
-      'CaddyFfi is not supported on ${Platform.operatingSystem}',
-    );
+  CaddyFfi() {
+    // Eagerly validate that the library can be loaded on the main isolate.
+    DynamicLibrary.open(_libraryPath());
   }
 
-  String start(String configJSON) {
-    final configPtr = configJSON.toNativeUtf8();
-    try {
-      final resultPtr = _startCaddy(configPtr);
+  Future<String> start(String configJSON) {
+    return _runInIsolate((libPath) {
+      final lib = DynamicLibrary.open(libPath);
+      final startCaddy =
+          lib.lookupFunction<_StartCaddyC, _StartCaddyDart>('StartCaddy');
+      final configPtr = configJSON.toNativeUtf8();
+      try {
+        final resultPtr = startCaddy(configPtr);
+        final result = resultPtr.toDartString();
+        calloc.free(resultPtr);
+        return result;
+      } finally {
+        calloc.free(configPtr);
+      }
+    });
+  }
+
+  Future<String> stop() {
+    return _runInIsolate((libPath) {
+      final lib = DynamicLibrary.open(libPath);
+      final stopCaddy =
+          lib.lookupFunction<_StopCaddyC, _StopCaddyDart>('StopCaddy');
+      final resultPtr = stopCaddy();
       final result = resultPtr.toDartString();
       calloc.free(resultPtr);
       return result;
-    } finally {
-      calloc.free(configPtr);
-    }
+    });
   }
 
-  String stop() {
-    final resultPtr = _stopCaddy();
-    final result = resultPtr.toDartString();
-    calloc.free(resultPtr);
-    return result;
+  Future<String> reload(String configJSON) {
+    return _runInIsolate((libPath) {
+      final lib = DynamicLibrary.open(libPath);
+      final reloadCaddy =
+          lib.lookupFunction<_ReloadCaddyC, _ReloadCaddyDart>('ReloadCaddy');
+      final configPtr = configJSON.toNativeUtf8();
+      try {
+        final resultPtr = reloadCaddy(configPtr);
+        final result = resultPtr.toDartString();
+        calloc.free(resultPtr);
+        return result;
+      } finally {
+        calloc.free(configPtr);
+      }
+    });
   }
 
-  String reload(String configJSON) {
-    final configPtr = configJSON.toNativeUtf8();
-    try {
-      final resultPtr = _reloadCaddy(configPtr);
+  Future<String> status() {
+    return _runInIsolate((libPath) {
+      final lib = DynamicLibrary.open(libPath);
+      final getCaddyStatus =
+          lib.lookupFunction<_GetCaddyStatusC, _GetCaddyStatusDart>(
+            'GetCaddyStatus',
+          );
+      final resultPtr = getCaddyStatus();
       final result = resultPtr.toDartString();
       calloc.free(resultPtr);
       return result;
-    } finally {
-      calloc.free(configPtr);
-    }
+    });
   }
 
-  String status() {
-    final resultPtr = _getCaddyStatus();
-    final result = resultPtr.toDartString();
-    calloc.free(resultPtr);
-    return result;
-  }
-
-  String setEnvironment(String envJSON) {
-    final envPtr = envJSON.toNativeUtf8();
-    try {
-      final resultPtr = _setEnvironment(envPtr);
-      final result = resultPtr.toDartString();
-      calloc.free(resultPtr);
-      return result;
-    } finally {
-      calloc.free(envPtr);
-    }
+  Future<String> setEnvironment(String envJSON) {
+    return _runInIsolate((libPath) {
+      final lib = DynamicLibrary.open(libPath);
+      final setEnv =
+          lib.lookupFunction<_SetEnvironmentC, _SetEnvironmentDart>(
+            'SetEnvironment',
+          );
+      final envPtr = envJSON.toNativeUtf8();
+      try {
+        final resultPtr = setEnv(envPtr);
+        final result = resultPtr.toDartString();
+        calloc.free(resultPtr);
+        return result;
+      } finally {
+        calloc.free(envPtr);
+      }
+    });
   }
 }
