@@ -18,7 +18,10 @@ class CaddyState extends Equatable {
   });
 
   factory CaddyState.initial() {
-    return const CaddyState(status: CaddyStopped(), config: CaddyTextConfig());
+    return CaddyState(
+      status: const CaddyStopped(),
+      config: CaddyConfigPresets.staticFileServer(),
+    );
   }
 
   final CaddyStatus status;
