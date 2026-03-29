@@ -8,6 +8,9 @@ on:
         required: true
         default: 'main'
 
+env:
+  FLUTTER_VERSION: '3.38.x'
+
 concurrency:
   group: ${{ github.workflow }}-${{ inputs.git-ref }}
   cancel-in-progress: true
@@ -27,6 +30,9 @@ jobs:
           cache-dependency-path: go/caddy_bridge/go.sum
 
       - uses: flutter-actions/setup-flutter@v4
+        with:
+          channel: stable
+          version: ${{ env.FLUTTER_VERSION }}
 
       - name: Install Linux build dependencies
         run: |
@@ -88,6 +94,9 @@ jobs:
           cache-dependency-path: go/caddy_bridge/go.sum
 
       - uses: flutter-actions/setup-flutter@v4
+        with:
+          channel: stable
+          version: ${{ env.FLUTTER_VERSION }}
 
       - name: Cache dependencies
         uses: actions/cache@v5
@@ -136,6 +145,9 @@ jobs:
           ref: ${{ inputs.git-ref }}
 
       - uses: flutter-actions/setup-flutter@v4
+        with:
+          channel: stable
+          version: ${{ env.FLUTTER_VERSION }}
 
       - name: Cache dependencies
         uses: actions/cache@v5
@@ -153,8 +165,7 @@ jobs:
         run: melos run prepare
 
       - name: Build Windows
-        run: flutter build windows --release 2>&1
-        continue-on-error: true
+        run: flutter build windows --release
 
       - name: Package Windows build
         run: Compress-Archive -Path build\windows\x64\runner\Release\* -DestinationPath caddy-app-windows.zip
@@ -180,6 +191,9 @@ jobs:
           cache-dependency-path: go/caddy_bridge/go.sum
 
       - uses: flutter-actions/setup-flutter@v4
+        with:
+          channel: stable
+          version: ${{ env.FLUTTER_VERSION }}
 
       - name: Setup Java
         uses: actions/setup-java@v4
@@ -189,12 +203,14 @@ jobs:
 
       - name: Setup Android NDK
         run: |
-          # gomobile requires NDK with min API 21+
-          sdkmanager --install "ndk;27.2.12479018"
+          yes | $ANDROID_SDK_ROOT/cmdline-tools/latest/bin/sdkmanager --install "ndk;27.2.12479018" || true
           echo "ANDROID_NDK_HOME=$ANDROID_SDK_ROOT/ndk/27.2.12479018" >> $GITHUB_ENV
 
       - name: Install gomobile
-        run: go install golang.org/x/mobile/cmd/gomobile@latest && gomobile init
+        run: |
+          go install golang.org/x/mobile/cmd/gomobile@latest
+          go install golang.org/x/mobile/cmd/gobind@latest
+          gomobile init
 
       - name: Cache dependencies
         uses: actions/cache@v5
@@ -241,6 +257,9 @@ jobs:
           cache-dependency-path: go/caddy_bridge/go.sum
 
       - uses: flutter-actions/setup-flutter@v4
+        with:
+          channel: stable
+          version: ${{ env.FLUTTER_VERSION }}
 
       - name: Install gomobile
         run: |
