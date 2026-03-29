@@ -2,510 +2,137 @@ import 'dart:convert';
 
 import 'package:equatable/equatable.dart';
 
-/// DNS provider types supported by the embedded Caddy modules.
-enum DnsProvider { none, cloudflare, route53, duckdns }
+/// The format of a Caddy configuration text.
+enum ConfigFormat { caddyfile, json }
 
-/// TLS configuration for automatic HTTPS.
-class CaddyTlsConfig extends Equatable {
-  const CaddyTlsConfig({
-    this.enabled = false,
-    this.domain = '',
-    this.dnsProvider = DnsProvider.none,
+/// A text-based Caddy configuration that stores the raw config content
+/// and its format (Caddyfile or JSON).
+///
+/// This replaces the old structured [CaddyConfig] model. Users edit
+/// Caddyfile or JSON directly; the Go bridge handles Caddyfile→JSON
+/// conversion via Caddy's built-in adapter.
+class CaddyTextConfig extends Equatable {
+  const CaddyTextConfig({
+    this.text = '',
+    this.format = ConfigFormat.caddyfile,
   });
 
-  final bool enabled;
-  final String domain;
-  final DnsProvider dnsProvider;
+  /// The raw configuration text (Caddyfile or JSON).
+  final String text;
 
-  factory CaddyTlsConfig.fromJson(Map<String, dynamic> json) {
-    return CaddyTlsConfig(
-      enabled: json['enabled'] as bool? ?? false,
-      domain: json['domain'] as String? ?? '',
-      dnsProvider: DnsProvider.values.firstWhere(
-        (e) => e.name == json['dnsProvider'],
-        orElse: () => DnsProvider.none,
+  /// Whether this config is in Caddyfile or JSON format.
+  final ConfigFormat format;
+
+  bool get isEmpty => text.trim().isEmpty;
+
+  factory CaddyTextConfig.fromJson(Map<String, dynamic> json) {
+    return CaddyTextConfig(
+      text: json['text'] as String? ?? '',
+      format: ConfigFormat.values.firstWhere(
+        (e) => e.name == json['format'],
+        orElse: () => ConfigFormat.caddyfile,
       ),
     );
   }
 
   Map<String, dynamic> toJson() => {
-    'enabled': enabled,
-    'domain': domain,
-    'dnsProvider': dnsProvider.name,
-  };
-
-  CaddyTlsConfig copyWith({
-    bool? enabled,
-    String? domain,
-    DnsProvider? dnsProvider,
-  }) {
-    return CaddyTlsConfig(
-      enabled: enabled ?? this.enabled,
-      domain: domain ?? this.domain,
-      dnsProvider: dnsProvider ?? this.dnsProvider,
-    );
-  }
-
-  @override
-  List<Object?> get props => [enabled, domain, dnsProvider];
-}
-
-/// S3-compatible storage configuration for Caddy certificate persistence.
-class CaddyStorageConfig extends Equatable {
-  const CaddyStorageConfig({
-    this.enabled = false,
-    this.endpoint = '',
-    this.bucket = '',
-    this.region = '',
-    this.prefix = 'caddy/',
-  });
-
-  final bool enabled;
-  final String endpoint;
-  final String bucket;
-  final String region;
-  final String prefix;
-
-  factory CaddyStorageConfig.fromJson(Map<String, dynamic> json) {
-    return CaddyStorageConfig(
-      enabled: json['enabled'] as bool? ?? false,
-      endpoint: json['endpoint'] as String? ?? '',
-      bucket: json['bucket'] as String? ?? '',
-      region: json['region'] as String? ?? '',
-      prefix: json['prefix'] as String? ?? 'caddy/',
-    );
-  }
-
-  Map<String, dynamic> toJson() => {
-    'enabled': enabled,
-    'endpoint': endpoint,
-    'bucket': bucket,
-    'region': region,
-    'prefix': prefix,
-  };
-
-  CaddyStorageConfig copyWith({
-    bool? enabled,
-    String? endpoint,
-    String? bucket,
-    String? region,
-    String? prefix,
-  }) {
-    return CaddyStorageConfig(
-      enabled: enabled ?? this.enabled,
-      endpoint: endpoint ?? this.endpoint,
-      bucket: bucket ?? this.bucket,
-      region: region ?? this.region,
-      prefix: prefix ?? this.prefix,
-    );
-  }
-
-  @override
-  List<Object?> get props => [enabled, endpoint, bucket, region, prefix];
-}
-
-class CaddyConfig extends Equatable {
-  const CaddyConfig({
-    this.listenAddress = 'localhost:2015',
-    this.routes = const [],
-    this.rawJson,
-    this.tls = const CaddyTlsConfig(),
-    this.storage = const CaddyStorageConfig(),
-  });
-
-  final String listenAddress;
-  final List<CaddyRoute> routes;
-  final String? rawJson;
-  final CaddyTlsConfig tls;
-  final CaddyStorageConfig storage;
-
-  factory CaddyConfig.fromJson(Map<String, dynamic> json) {
-    if (json.containsKey('_rawJson')) {
-      return CaddyConfig(rawJson: json['_rawJson'] as String);
-    }
-
-    final listenAddress = json['listenAddress'] as String? ?? 'localhost:2015';
-    final routesList =
-        (json['routes'] as List<dynamic>?)
-            ?.map((r) => CaddyRoute.fromJson(r as Map<String, dynamic>))
-            .toList() ??
-        [];
-    final tls = json['tls'] != null
-        ? CaddyTlsConfig.fromJson(json['tls'] as Map<String, dynamic>)
-        : const CaddyTlsConfig();
-    final storage = json['storage'] != null
-        ? CaddyStorageConfig.fromJson(json['storage'] as Map<String, dynamic>)
-        : const CaddyStorageConfig();
-
-    return CaddyConfig(
-      listenAddress: listenAddress,
-      routes: routesList,
-      tls: tls,
-      storage: storage,
-    );
-  }
-
-  Map<String, dynamic> toJson() {
-    if (rawJson != null) {
-      return jsonDecode(rawJson!) as Map<String, dynamic>;
-    }
-
-    final host = listenAddress.split(':').first;
-    final port = listenAddress.split(':').last;
-
-    final apps = <String, dynamic>{
-      'http': {
-        'servers': {
-          'srv0': {
-            'listen': [':$port'],
-            'routes': routes.map((r) => r.toJson(host)).toList(),
-          },
-        },
-      },
-    };
-
-    // Add TLS automation policy if enabled
-    if (tls.enabled && tls.dnsProvider != DnsProvider.none) {
-      final providerConfig = switch (tls.dnsProvider) {
-        DnsProvider.cloudflare => {
-          'name': 'cloudflare',
-          'api_token': '{env.CF_API_TOKEN}',
-        },
-        DnsProvider.route53 => {
-          'name': 'route53',
-          'access_key_id': '{env.AWS_ACCESS_KEY_ID}',
-          'secret_access_key': '{env.AWS_SECRET_ACCESS_KEY}',
-        },
-        DnsProvider.duckdns => {
-          'name': 'duckdns',
-          'api_token': '{env.DUCKDNS_TOKEN}',
-        },
-        DnsProvider.none => <String, dynamic>{},
+        'text': text,
+        'format': format.name,
       };
 
-      apps['tls'] = {
-        'automation': {
-          'policies': [
-            {
-              if (tls.domain.isNotEmpty) 'subjects': [tls.domain],
-              'issuers': [
-                {
-                  'module': 'acme',
-                  'challenges': {
-                    'dns': {'provider': providerConfig},
-                  },
-                },
-              ],
-            },
-          ],
-        },
-      };
-    }
-
-    final json = <String, dynamic>{'apps': apps};
-
-    // Add S3 storage if enabled
-    if (storage.enabled && storage.bucket.isNotEmpty) {
-      json['storage'] = {
-        'module': 's3',
-        if (storage.endpoint.isNotEmpty) 'host': storage.endpoint,
-        'bucket': storage.bucket,
-        if (storage.region.isNotEmpty) 'region': storage.region,
-        if (storage.prefix.isNotEmpty) 'prefix': storage.prefix,
-      };
-    }
-
-    return json;
-  }
-
-  String toJsonString({bool adminEnabled = false}) {
-    final json = toJson();
-    if (adminEnabled) {
-      json['admin'] = {'listen': 'localhost:2019'};
-    } else {
-      json['admin'] = {'disabled': true};
-    }
-    return jsonEncode(json);
-  }
-
-  Map<String, dynamic> toStorageJson() {
-    if (rawJson != null) {
-      return {'_rawJson': rawJson, 'listenAddress': listenAddress};
-    }
-    return {
-      'listenAddress': listenAddress,
-      'routes': routes
-          .map((r) => {'path': r.path, 'handler': r.handler.toJson()})
-          .toList(),
-      'tls': tls.toJson(),
-      'storage': storage.toJson(),
-    };
-  }
-
-  CaddyConfig copyWith({
-    String? listenAddress,
-    List<CaddyRoute>? routes,
-    String? rawJson,
-    CaddyTlsConfig? tls,
-    CaddyStorageConfig? storage,
-  }) {
-    return CaddyConfig(
-      listenAddress: listenAddress ?? this.listenAddress,
-      routes: routes ?? this.routes,
-      rawJson: rawJson ?? this.rawJson,
-      tls: tls ?? this.tls,
-      storage: storage ?? this.storage,
+  CaddyTextConfig copyWith({String? text, ConfigFormat? format}) {
+    return CaddyTextConfig(
+      text: text ?? this.text,
+      format: format ?? this.format,
     );
   }
 
   @override
-  List<Object?> get props => [listenAddress, routes, rawJson, tls, storage];
+  List<Object?> get props => [text, format];
 }
 
-class CaddyRoute extends Equatable {
-  const CaddyRoute({required this.path, required this.handler});
-
-  final String path;
-  final CaddyHandler handler;
-
-  factory CaddyRoute.fromJson(Map<String, dynamic> json) {
-    return CaddyRoute(
-      path: json['path'] as String,
-      handler: CaddyHandler.fromJson(json['handler'] as Map<String, dynamic>),
-    );
-  }
-
-  Map<String, dynamic> toJson(String host) {
-    return {
-      'match': [
-        {
-          'host': [host],
-          'path': [path],
-        },
-      ],
-      'handle': [handler.toJson()],
-    };
-  }
-
-  @override
-  List<Object?> get props => [path, handler];
-}
-
-sealed class CaddyHandler extends Equatable {
-  const CaddyHandler();
-
-  factory CaddyHandler.fromJson(Map<String, dynamic> json) {
-    final type = json['handler'] as String? ?? json['type'] as String?;
-    return switch (type) {
-      'file_server' ||
-      'static_files' => StaticFileHandler(root: json['root'] as String? ?? '.'),
-      'reverse_proxy' => ReverseProxyHandler(
-        upstreams: _parseUpstreams(json['upstreams']),
-      ),
-      _ => StaticFileHandler(root: json['root'] as String? ?? '.'),
-    };
-  }
-
-  static List<String> _parseUpstreams(dynamic upstreams) {
-    if (upstreams is! List) return <String>[];
-    return upstreams.map<String>((item) {
-      if (item is String) return item;
-      if (item is Map) return item['dial'] as String? ?? '';
-      return '';
-    }).toList();
-  }
-
-  Map<String, dynamic> toJson();
-}
-
-final class StaticFileHandler extends CaddyHandler {
-  const StaticFileHandler({required this.root});
-
-  final String root;
-
-  @override
-  Map<String, dynamic> toJson() {
-    return {'handler': 'file_server', 'root': root};
-  }
-
-  @override
-  List<Object?> get props => [root];
-}
-
-final class ReverseProxyHandler extends CaddyHandler {
-  const ReverseProxyHandler({required this.upstreams});
-
-  final List<String> upstreams;
-
-  @override
-  Map<String, dynamic> toJson() {
-    return {
-      'handler': 'reverse_proxy',
-      'upstreams': upstreams.map((u) => {'dial': u}).toList(),
-    };
-  }
-
-  @override
-  List<Object?> get props => [upstreams];
-}
-
+/// Built-in Caddyfile presets for common server configurations.
 class CaddyConfigPresets {
   CaddyConfigPresets._();
 
-  static CaddyConfig staticFileServer({
-    String listenAddress = 'localhost:8080',
-    String root = '/var/www/html',
-  }) {
-    return CaddyConfig(
-      listenAddress: listenAddress,
-      routes: [
-        CaddyRoute(
-          path: '/*',
-          handler: StaticFileHandler(root: root),
-        ),
-      ],
-    );
-  }
+  static CaddyTextConfig staticFileServer() => const CaddyTextConfig(
+        text: ':8080\n'
+            '\n'
+            'root * /var/www/html\n'
+            'file_server\n',
+      );
 
-  static CaddyConfig reverseProxy({
-    String listenAddress = 'localhost:8080',
-    String upstream = 'localhost:3000',
-  }) {
-    return CaddyConfig(
-      listenAddress: listenAddress,
-      routes: [
-        CaddyRoute(
-          path: '/*',
-          handler: ReverseProxyHandler(upstreams: [upstream]),
-        ),
-      ],
-    );
-  }
+  static CaddyTextConfig reverseProxy() => const CaddyTextConfig(
+        text: ':8080\n'
+            '\n'
+            'reverse_proxy localhost:3000\n',
+      );
 
-  static CaddyConfig spaServer({
-    String listenAddress = 'localhost:8080',
-    String root = '/var/www/html',
-  }) {
-    return CaddyConfig(
-      listenAddress: listenAddress,
-      rawJson: jsonEncode({
-        'apps': {
-          'http': {
-            'servers': {
-              'srv0': {
-                'listen': [':${listenAddress.split(':').last}'],
-                'routes': [
-                  {
-                    'handle': [
-                      {'handler': 'file_server', 'root': root},
-                      {'handler': 'rewrite', 'uri': '/index.html'},
-                    ],
-                  },
-                ],
-              },
-            },
-          },
-        },
-      }),
-    );
-  }
+  static CaddyTextConfig spaServer() => const CaddyTextConfig(
+        text: ':8080\n'
+            '\n'
+            'root * /var/www/html\n'
+            'try_files {path} /index.html\n'
+            'file_server\n',
+      );
 
-  static CaddyConfig apiGateway({String listenAddress = 'localhost:8080'}) {
-    return CaddyConfig(
-      listenAddress: listenAddress,
-      rawJson: jsonEncode({
-        'apps': {
-          'http': {
-            'servers': {
-              'srv0': {
-                'listen': [':${listenAddress.split(':').last}'],
-                'routes': [
-                  {
-                    'match': [
-                      {
-                        'path': ['/api/*'],
-                      },
-                    ],
-                    'handle': [
-                      {
-                        'handler': 'reverse_proxy',
-                        'upstreams': [
-                          {'dial': 'localhost:3000'},
-                        ],
-                      },
-                    ],
-                  },
-                  {
-                    'handle': [
-                      {'handler': 'file_server', 'root': '/var/www/html'},
-                    ],
-                  },
-                ],
-              },
-            },
-          },
-        },
-      }),
-    );
-  }
+  static CaddyTextConfig apiGateway() => const CaddyTextConfig(
+        text: ':8080\n'
+            '\n'
+            'handle /api/* {\n'
+            '\treverse_proxy localhost:3000\n'
+            '}\n'
+            '\n'
+            'handle {\n'
+            '\troot * /var/www/html\n'
+            '\tfile_server\n'
+            '}\n',
+      );
 
-  /// Preset for HTTPS with DNS challenge.
-  static CaddyConfig httpsWithDns({
-    String listenAddress = ':443',
-    String domain = 'example.com',
-    DnsProvider dnsProvider = DnsProvider.cloudflare,
-  }) {
-    return CaddyConfig(
-      listenAddress: listenAddress,
-      tls: CaddyTlsConfig(
-        enabled: true,
-        domain: domain,
-        dnsProvider: dnsProvider,
-      ),
-      routes: [
-        const CaddyRoute(
-          path: '/*',
-          handler: StaticFileHandler(root: '/var/www/html'),
-        ),
-      ],
-    );
-  }
+  static CaddyTextConfig httpsWithDns() => const CaddyTextConfig(
+        text: 'example.com {\n'
+            '\ttls {\n'
+            '\t\tdns cloudflare {env.CF_API_TOKEN}\n'
+            '\t}\n'
+            '\n'
+            '\troot * /var/www/html\n'
+            '\tfile_server\n'
+            '}\n',
+      );
 
-  /// Preset for HTTPS with DNS challenge and S3 certificate storage.
-  static CaddyConfig httpsWithS3({
-    String listenAddress = ':443',
-    String domain = 'example.com',
-    DnsProvider dnsProvider = DnsProvider.cloudflare,
-    String s3Bucket = 'my-caddy-storage',
-  }) {
-    return CaddyConfig(
-      listenAddress: listenAddress,
-      tls: CaddyTlsConfig(
-        enabled: true,
-        domain: domain,
-        dnsProvider: dnsProvider,
-      ),
-      storage: CaddyStorageConfig(enabled: true, bucket: s3Bucket),
-      routes: [
-        const CaddyRoute(
-          path: '/*',
-          handler: StaticFileHandler(root: '/var/www/html'),
-        ),
-      ],
-    );
-  }
+  static CaddyTextConfig httpsWithS3() => const CaddyTextConfig(
+        text: '{\n'
+            '\tstorage s3 {\n'
+            '\t\tbucket my-caddy-storage\n'
+            '\t}\n'
+            '}\n'
+            '\n'
+            'example.com {\n'
+            '\ttls {\n'
+            '\t\tdns cloudflare {env.CF_API_TOKEN}\n'
+            '\t}\n'
+            '\n'
+            '\troot * /var/www/html\n'
+            '\tfile_server\n'
+            '}\n',
+      );
 
-  static String? validate(CaddyConfig config) {
-    try {
-      config.toJson();
-      if (config.rawJson != null) {
-        jsonDecode(config.rawJson!);
+  /// Validates config text. For JSON, checks JSON syntax.
+  /// For Caddyfile, basic non-empty check (real validation happens
+  /// via the Go adapter).
+  static String? validate(CaddyTextConfig config) {
+    if (config.isEmpty) return 'Configuration is empty';
+
+    if (config.format == ConfigFormat.json) {
+      try {
+        jsonDecode(config.text);
+        return null;
+      } on FormatException catch (e) {
+        return 'Invalid JSON: ${e.message}';
       }
-      return null;
-    } on FormatException catch (e) {
-      return 'Invalid JSON: ${e.message}';
-    } catch (e) {
-      return e.toString();
     }
+
+    // Caddyfile validation happens server-side via adaptCaddyfile
+    return null;
   }
 }

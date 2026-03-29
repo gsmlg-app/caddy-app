@@ -7,7 +7,7 @@ sealed class CaddyEvent {
 final class CaddyStart extends CaddyEvent {
   const CaddyStart(this.config);
 
-  final CaddyConfig config;
+  final CaddyTextConfig config;
 }
 
 final class CaddyStop extends CaddyEvent {
@@ -17,7 +17,7 @@ final class CaddyStop extends CaddyEvent {
 final class CaddyReload extends CaddyEvent {
   const CaddyReload(this.config);
 
-  final CaddyConfig config;
+  final CaddyTextConfig config;
 }
 
 final class CaddyStatusCheck extends CaddyEvent {
@@ -27,7 +27,7 @@ final class CaddyStatusCheck extends CaddyEvent {
 final class CaddyUpdateConfig extends CaddyEvent {
   const CaddyUpdateConfig(this.config);
 
-  final CaddyConfig config;
+  final CaddyTextConfig config;
 }
 
 final class CaddyLogReceived extends CaddyEvent {

@@ -128,13 +128,11 @@ class _ServerStatusCard extends StatelessWidget {
                   if (isRunning) ...[
                     const SizedBox(height: 8),
                     Text(
-                      context.l10n.caddyListenAddress(
-                        state.config.listenAddress,
-                      ),
+                      '${state.config.format.name.toUpperCase()} config',
                       style: Theme.of(context).textTheme.bodyMedium,
                     ),
                     Text(
-                      '${state.config.routes.length} ${context.l10n.caddyActiveRoutes.toLowerCase()}',
+                      '${state.config.text.split('\n').where((l) => l.trim().isNotEmpty).length} lines',
                       style: Theme.of(context).textTheme.bodyMedium,
                     ),
                   ],

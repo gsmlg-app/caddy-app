@@ -123,10 +123,37 @@ void _showErrorRecoveryDialog(
           size: 48,
         ),
         title: Text(dialogContext.l10n.caddyErrorRecoveryTitle),
-        content: Text(
-          isPortInUse
-              ? dialogContext.l10n.caddyErrorPortInUse
-              : dialogContext.l10n.caddyErrorGeneric,
+        content: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                isPortInUse
+                    ? dialogContext.l10n.caddyErrorPortInUse
+                    : dialogContext.l10n.caddyErrorGeneric,
+              ),
+              const SizedBox(height: 12),
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: Theme.of(dialogContext)
+                      .colorScheme
+                      .errorContainer
+                      .withValues(alpha: 0.3),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: SelectableText(
+                  errorMessage,
+                  style: const TextStyle(
+                    fontFamily: 'monospace',
+                    fontSize: 12,
+                  ),
+                ),
+              ),
+            ],
+          ),
         ),
         actions: [
           TextButton(
@@ -248,7 +275,7 @@ class _StatusCardState extends State<_StatusCard> {
     final semanticLabel = [
       label,
       if (state.isRunning)
-        context.l10n.caddyListenAddress(state.config.listenAddress),
+        context.l10n.caddyListenAddress(state.config.text.split('\n').firstWhere((l) => l.trim().isNotEmpty, orElse: () => 'empty')),
       if (uptime != null) context.l10n.caddyUptime(_formatDuration(uptime)),
     ].join('. ');
 
@@ -266,16 +293,23 @@ class _StatusCardState extends State<_StatusCard> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      label,
-                      style: Theme.of(
-                        context,
-                      ).textTheme.titleMedium?.copyWith(color: color),
-                    ),
+                    state.hasError
+                        ? SelectableText(
+                            label,
+                            style: Theme.of(
+                              context,
+                            ).textTheme.titleMedium?.copyWith(color: color),
+                          )
+                        : Text(
+                            label,
+                            style: Theme.of(
+                              context,
+                            ).textTheme.titleMedium?.copyWith(color: color),
+                          ),
                     if (state.isRunning)
                       Text(
                         context.l10n.caddyListenAddress(
-                          state.config.listenAddress,
+                          state.config.text.split('\n').firstWhere((l) => l.trim().isNotEmpty, orElse: () => 'empty'),
                         ),
                       ),
                     if (uptime != null)
@@ -374,7 +408,7 @@ class _MetricsCard extends StatelessWidget {
                 icon: Icons.alt_route,
                 iconColor: primary,
                 label: context.l10n.caddyActiveRoutes,
-                value: context.l10n.caddyRouteCount(state.config.routes.length),
+                value: context.l10n.caddyRouteCount(state.config.text.split('\n').where((l) => l.trim().isNotEmpty).length),
                 valueColor: primary,
               ),
               const SizedBox(height: 8),
@@ -448,8 +482,8 @@ class _ConfigSummary extends StatelessWidget {
     final isValid = validationError == null;
     final semanticLabel =
         '${context.l10n.caddyConfig}. '
-        '${context.l10n.caddyListenAddress(state.config.listenAddress)}. '
-        '${context.l10n.caddyRoutesCount(state.config.routes.length)}';
+        '${context.l10n.caddyListenAddress(state.config.text.split('\n').firstWhere((l) => l.trim().isNotEmpty, orElse: () => 'empty'))}. '
+        '${context.l10n.caddyRoutesCount(state.config.text.split('\n').where((l) => l.trim().isNotEmpty).length)}';
 
     return Semantics(
       label: semanticLabel,
@@ -483,8 +517,8 @@ class _ConfigSummary extends StatelessWidget {
                 ],
               ),
               const SizedBox(height: 8),
-              Text(context.l10n.caddyListenAddress(state.config.listenAddress)),
-              Text(context.l10n.caddyRoutesCount(state.config.routes.length)),
+              Text(context.l10n.caddyListenAddress(state.config.text.split('\n').firstWhere((l) => l.trim().isNotEmpty, orElse: () => 'empty'))),
+              Text(context.l10n.caddyRoutesCount(state.config.text.split('\n').where((l) => l.trim().isNotEmpty).length)),
             ],
           ),
         ),

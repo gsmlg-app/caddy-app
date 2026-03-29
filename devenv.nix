@@ -7,7 +7,7 @@ in
 {
   env.GREET = "Caddy App";
 
-  env.GOPATH = "${builtins.getEnv "HOME"}/go";
+  env.GOPATH = "${config.devenv.root}/.devenv/go";
 
   packages = [
     pkgs-stable.git
@@ -36,6 +36,12 @@ in
 
   scripts.hello.exec = ''
     figlet -w 120 $GREET | lolcat
+  '';
+
+  scripts.build-caddy-bridge.exec = ''
+    echo "Building Caddy bridge..."
+    export GOPATH="''${GOPATH:-$HOME/go}"
+    cd go/caddy_bridge && make linux && echo "Caddy bridge built successfully." || echo "Caddy bridge build failed!"
   '';
 
   enterShell = ''

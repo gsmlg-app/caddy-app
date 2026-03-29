@@ -9,6 +9,9 @@ import (
 	// Caddy standard modules (HTTP server, TLS, headers, reverse_proxy, etc.).
 	_ "github.com/caddyserver/caddy/v2/modules/standard"
 
+	// Caddyfile adapter for converting Caddyfile format to JSON config.
+	_ "github.com/caddyserver/caddy/v2/caddyconfig/caddyfile"
+
 	// DNS challenge providers for ACME TLS certificate issuance.
 	_ "github.com/caddy-dns/cloudflare"
 	_ "github.com/caddy-dns/duckdns"

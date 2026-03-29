@@ -19,6 +19,11 @@ typedef _GetCaddyStatusDart = Pointer<Utf8> Function();
 typedef _SetEnvironmentC = Pointer<Utf8> Function(Pointer<Utf8> envJSON);
 typedef _SetEnvironmentDart = Pointer<Utf8> Function(Pointer<Utf8> envJSON);
 
+typedef _AdaptCaddyfileC = Pointer<Utf8> Function(Pointer<Utf8> caddyfileText);
+typedef _AdaptCaddyfileDart = Pointer<Utf8> Function(
+  Pointer<Utf8> caddyfileText,
+);
+
 /// Absolute path to the Caddy bridge shared library.
 /// Resolved once from the executable location so it works in both the main
 /// isolate and compute() isolates.
@@ -109,6 +114,21 @@ String _doSetEnvironment(String envJSON) {
   }
 }
 
+String _doAdaptCaddyfile(String caddyfileText) {
+  final lib = DynamicLibrary.open(_resolvedLibPath);
+  final fn = lib
+      .lookupFunction<_AdaptCaddyfileC, _AdaptCaddyfileDart>('AdaptCaddyfile');
+  final ptr = caddyfileText.toNativeUtf8();
+  try {
+    final res = fn(ptr);
+    final s = res.toDartString();
+    calloc.free(res);
+    return s;
+  } finally {
+    calloc.free(ptr);
+  }
+}
+
 class CaddyFfi {
   CaddyFfi() {
     // Load the library on the main isolate to trigger Go runtime init.
@@ -126,4 +146,7 @@ class CaddyFfi {
 
   Future<String> setEnvironment(String envJSON) =>
       compute(_doSetEnvironment, envJSON);
+
+  Future<String> adaptCaddyfile(String caddyfileText) =>
+      compute(_doAdaptCaddyfile, caddyfileText);
 }

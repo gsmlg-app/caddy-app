@@ -18,11 +18,11 @@ class CaddyState extends Equatable {
   });
 
   factory CaddyState.initial() {
-    return const CaddyState(status: CaddyStopped(), config: CaddyConfig());
+    return const CaddyState(status: CaddyStopped(), config: CaddyTextConfig());
   }
 
   final CaddyStatus status;
-  final CaddyConfig config;
+  final CaddyTextConfig config;
   final List<String> logs;
   final DateTime? lastStatusCheck;
   final bool adminEnabled;
@@ -61,7 +61,7 @@ class CaddyState extends Equatable {
 
   CaddyState copyWith({
     CaddyStatus? status,
-    CaddyConfig? config,
+    CaddyTextConfig? config,
     List<String>? logs,
     DateTime? lastStatusCheck,
     bool? adminEnabled,
