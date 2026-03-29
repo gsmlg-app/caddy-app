@@ -9,7 +9,7 @@ on:
         default: 'main'
 
 env:
-  FLUTTER_VERSION: '3.38.x'
+  FLUTTER_VERSION: '3.38.5'
 
 concurrency:
   group: ${{ github.workflow }}-${{ inputs.git-ref }}
