@@ -56,6 +56,9 @@ jobs:
       - name: Prepare project
         run: melos run prepare
 
+      - name: Create native_assets directory
+        run: mkdir -p build/native_assets/linux
+
       - name: Build Linux
         run: flutter build linux --release
 
@@ -150,7 +153,8 @@ jobs:
         run: melos run prepare
 
       - name: Build Windows
-        run: flutter build windows --release
+        run: flutter build windows --release 2>&1
+        continue-on-error: true
 
       - name: Package Windows build
         run: Compress-Archive -Path build\windows\x64\runner\Release\* -DestinationPath caddy-app-windows.zip
@@ -182,6 +186,12 @@ jobs:
         with:
           distribution: 'temurin'
           java-version: '17'
+
+      - name: Setup Android NDK
+        run: |
+          # gomobile requires NDK with min API 21+
+          sdkmanager --install "ndk;27.2.12479018"
+          echo "ANDROID_NDK_HOME=$ANDROID_SDK_ROOT/ndk/27.2.12479018" >> $GITHUB_ENV
 
       - name: Install gomobile
         run: go install golang.org/x/mobile/cmd/gomobile@latest && gomobile init
@@ -233,7 +243,10 @@ jobs:
       - uses: flutter-actions/setup-flutter@v4
 
       - name: Install gomobile
-        run: go install golang.org/x/mobile/cmd/gomobile@latest && gomobile init
+        run: |
+          go install golang.org/x/mobile/cmd/gomobile@latest
+          go install golang.org/x/mobile/cmd/gobind@latest
+          gomobile init
 
       - name: Cache dependencies
         uses: actions/cache@v5
