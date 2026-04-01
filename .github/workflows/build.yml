@@ -24,7 +24,7 @@ jobs:
         with:
           ref: ${{ inputs.git-ref }}
 
-      - uses: actions/setup-go@v5
+      - uses: actions/setup-go@v6
         with:
           go-version: '1.25'
           cache-dependency-path: go/caddy_bridge/go.sum
@@ -88,7 +88,7 @@ jobs:
         with:
           ref: ${{ inputs.git-ref }}
 
-      - uses: actions/setup-go@v5
+      - uses: actions/setup-go@v6
         with:
           go-version: '1.25'
           cache-dependency-path: go/caddy_bridge/go.sum
@@ -185,7 +185,7 @@ jobs:
         with:
           ref: ${{ inputs.git-ref }}
 
-      - uses: actions/setup-go@v5
+      - uses: actions/setup-go@v6
         with:
           go-version: '1.25'
           cache-dependency-path: go/caddy_bridge/go.sum
@@ -251,7 +251,7 @@ jobs:
         with:
           ref: ${{ inputs.git-ref }}
 
-      - uses: actions/setup-go@v5
+      - uses: actions/setup-go@v6
         with:
           go-version: '1.25'
           cache-dependency-path: go/caddy_bridge/go.sum
