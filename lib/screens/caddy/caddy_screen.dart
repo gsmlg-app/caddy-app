@@ -22,6 +22,7 @@ class CaddyScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return DmAdaptiveScaffold(
+      internalAnimations: false,
       selectedIndex: Destinations.indexOf(const Key(name), context),
       onSelectedIndexChange: (idx) => Destinations.changeHandler(idx, context),
       destinations: Destinations.navs(context),
