@@ -2,9 +2,9 @@ import 'package:app_locale/app_locale.dart';
 import 'package:app_logging/app_logging.dart';
 import 'package:app_provider/app_provider.dart';
 import 'package:caddy_bloc/caddy_bloc.dart';
+import 'package:duskmoon_ui/duskmoon_ui.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:theme_bloc/theme_bloc.dart';
 
 import 'router.dart';
 
@@ -44,10 +44,7 @@ class _AppState extends State<App> with WidgetsBindingObserver {
 
   @override
   Widget build(BuildContext context) {
-    final themeBloc = context.read<ThemeBloc>();
-
-    return BlocBuilder<ThemeBloc, ThemeState>(
-      bloc: themeBloc,
+    return BlocBuilder<DmThemeBloc, DmThemeState>(
       builder: (context, state) {
         return _AppContent(themeState: state);
       },
@@ -58,22 +55,25 @@ class _AppState extends State<App> with WidgetsBindingObserver {
 class _AppContent extends StatelessWidget {
   const _AppContent({required this.themeState});
 
-  final ThemeState themeState;
+  final DmThemeState themeState;
 
   @override
   Widget build(BuildContext context) {
     final router = AppRouter.router;
     return AppBlocProvider(
-      child: MaterialApp.router(
-        key: const Key('app'),
-        debugShowCheckedModeBanner: false,
-        routerConfig: router,
-        onGenerateTitle: (context) => context.l10n.appName,
-        theme: themeState.theme.lightTheme,
-        darkTheme: themeState.theme.darkTheme,
-        themeMode: themeState.themeMode,
-        localizationsDelegates: AppLocale.localizationsDelegates,
-        supportedLocales: AppLocale.supportedLocales,
+      child: DuskmoonApp(
+        child: MaterialApp.router(
+          key: const Key('app'),
+          debugShowCheckedModeBanner: false,
+          routerConfig: router,
+          onGenerateTitle: (context) => context.l10n.appName,
+          theme: themeState.entry.light,
+          darkTheme: themeState.entry.dark,
+          themeMode: themeState.themeMode,
+          scaffoldMessengerKey: dmScaffoldMessengerKey,
+          localizationsDelegates: AppLocale.localizationsDelegates,
+          supportedLocales: AppLocale.supportedLocales,
+        ),
       ),
     );
   }
