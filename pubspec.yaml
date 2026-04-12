@@ -34,8 +34,6 @@ workspace:
   - app_bloc/caddy
   - third_party/form_bloc
   - third_party/flutter_form_bloc
-  - third_party/flutter_adaptive_scaffold
-  - third_party/settings_ui
 
 dependencies:
   flutter:
@@ -57,7 +55,7 @@ dependencies:
   cupertino_icons: ^1.0.8
   flutter_svg: ^2.0.16
   lottie: ^3.3.1
-  google_fonts: ^6.2.1
+  duskmoon_ui: ^1.4.0
 
   # workspace packages
   app_database: any
@@ -71,7 +69,6 @@ dependencies:
   app_client_info: any
   app_feedback: any
   app_adaptive_widgets: any
-  settings_ui: any
   app_logging: any
   app_secure_storage: any
   app_web_view: any
