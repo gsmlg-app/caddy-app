@@ -1,4 +1,4 @@
-import 'package:app_adaptive_widgets/app_adaptive_widgets.dart';
+import 'package:duskmoon_ui/duskmoon_ui.dart';
 import 'package:app_artwork/app_artwork.dart';
 import 'package:app_locale/app_locale.dart';
 import 'package:caddy_bloc/caddy_bloc.dart';
@@ -20,7 +20,7 @@ class HomeScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return AppAdaptiveScaffold(
+    return DmAdaptiveScaffold(
       selectedIndex: Destinations.indexOf(const Key(HomeScreen.name), context),
       onSelectedIndexChange: (idx) => Destinations.changeHandler(idx, context),
       destinations: Destinations.navs(context),

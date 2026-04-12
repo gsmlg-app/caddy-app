@@ -1,13 +1,10 @@
-import 'package:app_adaptive_widgets/app_adaptive_widgets.dart';
 import 'package:app_locale/app_locale.dart';
-import 'package:app_theme/app_theme.dart';
+import 'package:duskmoon_ui/duskmoon_ui.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:caddy_app/destination.dart';
 import 'package:caddy_app/screens/settings/settings_screen.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:settings_ui/settings_ui.dart';
-import 'package:theme_bloc/theme_bloc.dart';
 
 class AccentColorSettingsScreen extends StatelessWidget {
   static const name = 'Accent Color Settings';
@@ -17,7 +14,7 @@ class AccentColorSettingsScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return AppAdaptiveScaffold(
+    return DmAdaptiveScaffold(
       selectedIndex: Destinations.indexOf(
         const Key(SettingsScreen.name),
         context,
@@ -25,7 +22,7 @@ class AccentColorSettingsScreen extends StatelessWidget {
       onSelectedIndexChange: (idx) => Destinations.changeHandler(idx, context),
       destinations: Destinations.navs(context),
       body: (context) {
-        final themeBloc = context.read<ThemeBloc>();
+        final themeBloc = context.read<DmThemeBloc>();
         final isLight = Theme.of(context).brightness == Brightness.light;
 
         return SafeArea(
@@ -33,11 +30,9 @@ class AccentColorSettingsScreen extends StatelessWidget {
             slivers: <Widget>[
               SliverAppBar(title: Text(context.l10n.accentColor)),
               SliverFillRemaining(
-                child: BlocBuilder<ThemeBloc, ThemeState>(
+                child: BlocBuilder<DmThemeBloc, DmThemeState>(
                   bloc: themeBloc,
                   builder: (context, state) {
-                    final currentTheme = state.theme;
-
                     return SettingsList(
                       sections: [
                         SettingsSection(
@@ -45,11 +40,11 @@ class AccentColorSettingsScreen extends StatelessWidget {
                           tiles: <AbstractSettingsTile>[
                             CustomSettingsTile(
                               child: _AccentColorPicker(
-                                themes: themeList,
-                                currentTheme: currentTheme,
+                                themes: DmThemeData.themes,
+                                currentThemeName: state.themeName,
                                 isLight: isLight,
                                 onThemeChanged: (theme) {
-                                  themeBloc.add(ChangeTheme(theme));
+                                  themeBloc.add(DmSetTheme(theme.name));
                                 },
                               ),
                             ),
@@ -64,7 +59,6 @@ class AccentColorSettingsScreen extends StatelessWidget {
           ),
         );
       },
-      smallSecondaryBody: AdaptiveScaffold.emptyBuilder,
     );
   }
 }
@@ -73,15 +67,15 @@ class AccentColorSettingsScreen extends StatelessWidget {
 class _AccentColorPicker extends StatelessWidget {
   const _AccentColorPicker({
     required this.themes,
-    required this.currentTheme,
+    required this.currentThemeName,
     required this.isLight,
     required this.onThemeChanged,
   });
 
-  final List<AppTheme> themes;
-  final AppTheme currentTheme;
+  final List<DmThemeEntry> themes;
+  final String currentThemeName;
   final bool isLight;
-  final ValueChanged<AppTheme> onThemeChanged;
+  final ValueChanged<DmThemeEntry> onThemeChanged;
 
   @override
   Widget build(BuildContext context) {
@@ -93,15 +87,14 @@ class _AccentColorPicker extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Color circles row
           Wrap(
             spacing: 12,
             runSpacing: 12,
             children: themes.map((theme) {
               final colorScheme = isLight
-                  ? theme.lightTheme.colorScheme
-                  : theme.darkTheme.colorScheme;
-              final isSelected = currentTheme.name == theme.name;
+                  ? theme.light.colorScheme
+                  : theme.dark.colorScheme;
+              final isSelected = currentThemeName == theme.name;
 
               return _ColorOption(
                 color: colorScheme.primary,
@@ -111,9 +104,8 @@ class _AccentColorPicker extends StatelessWidget {
             }).toList(),
           ),
           const SizedBox(height: 12),
-          // Current theme name
           Text(
-            currentTheme.name,
+            currentThemeName,
             style: TextStyle(
               fontSize: 13,
               color: labelColor.withValues(alpha: 0.7),

@@ -1,6 +1,6 @@
 import 'dart:async';
 
-import 'package:app_adaptive_widgets/app_adaptive_widgets.dart';
+import 'package:duskmoon_ui/duskmoon_ui.dart';
 import 'package:app_locale/app_locale.dart';
 import 'package:caddy_bloc/caddy_bloc.dart';
 import 'package:caddy_service/caddy_service.dart';
@@ -22,7 +22,7 @@ class CaddyScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return AppAdaptiveScaffold(
+    return DmAdaptiveScaffold(
       selectedIndex: Destinations.indexOf(const Key(name), context),
       onSelectedIndexChange: (idx) => Destinations.changeHandler(idx, context),
       destinations: Destinations.navs(context),
@@ -113,55 +113,43 @@ void _showErrorRecoveryDialog(
   final isPortInUse =
       errorMessage.contains('already in use') || errorMessage.contains('bind:');
 
-  showDialog(
+  showDmDialog(
     context: context,
-    builder: (dialogContext) {
-      return AlertDialog(
-        icon: Icon(
-          isPortInUse ? Icons.portable_wifi_off : Icons.error_outline,
-          color: Theme.of(dialogContext).colorScheme.error,
-          size: 48,
+    title: Text(context.l10n.caddyErrorRecoveryTitle),
+    content: Text(
+      isPortInUse
+          ? context.l10n.caddyErrorPortInUse
+          : context.l10n.caddyErrorGeneric,
+    ),
+    actions: [
+      DmDialogAction(
+        onPressed: (ctx) => Navigator.of(ctx).pop(),
+        child: Text(context.l10n.caddyErrorDismiss),
+      ),
+      if (isPortInUse)
+        DmDialogAction(
+          onPressed: (ctx) {
+            Navigator.of(ctx).pop();
+            context.goNamed(CaddyConfigScreen.name);
+          },
+          child: Text(context.l10n.caddyErrorChangePort),
         ),
-        title: Text(dialogContext.l10n.caddyErrorRecoveryTitle),
-        content: Text(
-          isPortInUse
-              ? dialogContext.l10n.caddyErrorPortInUse
-              : dialogContext.l10n.caddyErrorGeneric,
+      if (!isPortInUse)
+        DmDialogAction(
+          onPressed: (ctx) {
+            Navigator.of(ctx).pop();
+            context.goNamed(CaddyLogScreen.name);
+          },
+          child: Text(context.l10n.caddyErrorViewLogs),
         ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(dialogContext).pop(),
-            child: Text(dialogContext.l10n.caddyErrorDismiss),
-          ),
-          if (isPortInUse)
-            OutlinedButton.icon(
-              onPressed: () {
-                Navigator.of(dialogContext).pop();
-                context.goNamed(CaddyConfigScreen.name);
-              },
-              icon: const Icon(Icons.edit),
-              label: Text(dialogContext.l10n.caddyErrorChangePort),
-            ),
-          if (!isPortInUse)
-            OutlinedButton.icon(
-              onPressed: () {
-                Navigator.of(dialogContext).pop();
-                context.goNamed(CaddyLogScreen.name);
-              },
-              icon: const Icon(Icons.article),
-              label: Text(dialogContext.l10n.caddyErrorViewLogs),
-            ),
-          FilledButton.icon(
-            onPressed: () {
-              Navigator.of(dialogContext).pop();
-              context.read<CaddyBloc>().add(CaddyStart(state.config));
-            },
-            icon: const Icon(Icons.refresh),
-            label: Text(dialogContext.l10n.caddyErrorRetry),
-          ),
-        ],
-      );
-    },
+      DmDialogAction(
+        onPressed: (ctx) {
+          Navigator.of(ctx).pop();
+          context.read<CaddyBloc>().add(CaddyStart(state.config));
+        },
+        child: Text(context.l10n.caddyErrorRetry),
+      ),
+    ],
   );
 }
 
