@@ -4,7 +4,6 @@ import 'package:app_locale/app_locale.dart';
 import 'package:caddy_bloc/caddy_bloc.dart';
 import 'package:caddy_service/caddy_service.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import 'package:caddy_app/destination.dart';
 import 'package:caddy_app/screens/caddy/caddy_screen.dart';

@@ -5,7 +5,6 @@ import 'package:caddy_app/destination.dart';
 import 'package:caddy_app/screens/settings/accent_color_settings_screen.dart';
 import 'package:caddy_app/screens/settings/app_settings_screen.dart';
 import 'package:caddy_app/screens/settings/appearance_settings_screen.dart';
-import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 
 class SettingsScreen extends StatelessWidget {

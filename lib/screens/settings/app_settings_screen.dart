@@ -3,7 +3,6 @@ import 'package:duskmoon_ui/duskmoon_ui.dart';
 import 'package:flutter/material.dart';
 import 'package:caddy_app/destination.dart';
 import 'package:caddy_app/screens/settings/settings_screen.dart';
-import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class AppSettingsScreen extends StatelessWidget {

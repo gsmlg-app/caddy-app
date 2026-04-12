@@ -4,7 +4,6 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:caddy_app/destination.dart';
 import 'package:caddy_app/screens/settings/settings_screen.dart';
-import 'package:flutter_bloc/flutter_bloc.dart';
 
 class AppearanceSettingsScreen extends StatelessWidget {
   static const name = 'Appearance Settings';

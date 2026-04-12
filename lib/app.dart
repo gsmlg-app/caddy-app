@@ -4,7 +4,6 @@ import 'package:app_provider/app_provider.dart';
 import 'package:caddy_bloc/caddy_bloc.dart';
 import 'package:duskmoon_ui/duskmoon_ui.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_bloc/flutter_bloc.dart';
 
 import 'router.dart';
 
