@@ -5,9 +5,9 @@ import 'package:caddy_service/caddy_service.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:theme_bloc/theme_bloc.dart';
+import 'package:duskmoon_ui/duskmoon_ui.dart';
 
-/// Top-level provider for repositories and ThemeBloc.
+/// Top-level provider for repositories and DmThemeBloc.
 /// Used at app startup before localization is available.
 class MainProvider extends StatelessWidget {
   const MainProvider({
@@ -39,9 +39,9 @@ class MainProvider extends StatelessWidget {
       ],
       child: MultiBlocProvider(
         providers: [
-          BlocProvider<ThemeBloc>(
+          BlocProvider<DmThemeBloc>(
             create: (BuildContext context) =>
-                ThemeBloc(context.read<SharedPreferences>()),
+                DmThemeBloc(prefs: context.read<SharedPreferences>()),
           ),
         ],
         child: child,
