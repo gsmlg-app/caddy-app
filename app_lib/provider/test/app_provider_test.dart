@@ -2,10 +2,9 @@ import 'package:app_database/app_database.dart';
 import 'package:app_provider/app_provider.dart';
 import 'package:app_secure_storage/app_secure_storage.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:theme_bloc/theme_bloc.dart';
+import 'package:duskmoon_ui/duskmoon_ui.dart';
 
 class InMemoryVaultRepository implements VaultRepository {
   final Map<String, String> _data = {};
@@ -119,8 +118,8 @@ void main() {
       expect(identical(retrieved, vault), isTrue);
     });
 
-    testWidgets('provides ThemeBloc to descendants', (tester) async {
-      late ThemeBloc retrieved;
+    testWidgets('provides DmThemeBloc to descendants', (tester) async {
+      late DmThemeBloc retrieved;
 
       await tester.pumpWidget(
         MaterialApp(
@@ -130,7 +129,7 @@ void main() {
             vault: vault,
             child: Builder(
               builder: (context) {
-                retrieved = context.read<ThemeBloc>();
+                retrieved = context.read<DmThemeBloc>();
                 return const SizedBox();
               },
             ),
@@ -138,11 +137,11 @@ void main() {
         ),
       );
 
-      expect(retrieved, isA<ThemeBloc>());
+      expect(retrieved, isA<DmThemeBloc>());
     });
 
-    testWidgets('ThemeBloc has default state', (tester) async {
-      late ThemeBloc bloc;
+    testWidgets('DmThemeBloc has default state', (tester) async {
+      late DmThemeBloc bloc;
 
       await tester.pumpWidget(
         MaterialApp(
@@ -152,7 +151,7 @@ void main() {
             vault: vault,
             child: Builder(
               builder: (context) {
-                bloc = context.read<ThemeBloc>();
+                bloc = context.read<DmThemeBloc>();
                 return const SizedBox();
               },
             ),
@@ -178,8 +177,8 @@ void main() {
       expect(find.text('Hello'), findsOneWidget);
     });
 
-    testWidgets('child can dispatch ThemeBloc events', (tester) async {
-      late ThemeBloc bloc;
+    testWidgets('child can dispatch DmThemeBloc events', (tester) async {
+      late DmThemeBloc bloc;
 
       await tester.pumpWidget(
         MaterialApp(
@@ -189,7 +188,7 @@ void main() {
             vault: vault,
             child: Builder(
               builder: (context) {
-                bloc = context.read<ThemeBloc>();
+                bloc = context.read<DmThemeBloc>();
                 return const SizedBox();
               },
             ),
@@ -197,7 +196,7 @@ void main() {
         ),
       );
 
-      bloc.add(const ChangeThemeMode(ThemeMode.dark));
+      bloc.add(const DmSetThemeMode(ThemeMode.dark));
       await tester.pump();
 
       expect(bloc.state.themeMode, ThemeMode.dark);

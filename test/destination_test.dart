@@ -4,8 +4,7 @@ import 'package:caddy_app/screens/home/home_screen.dart';
 import 'package:caddy_app/screens/caddy/caddy_screen.dart';
 import 'package:caddy_app/screens/settings/settings_screen.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:theme_bloc/theme_bloc.dart';
+import 'package:duskmoon_ui/duskmoon_ui.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:app_locale/app_locale.dart';
 
@@ -23,10 +22,10 @@ void main() {
 
       SharedPreferences.setMockInitialValues({});
       final prefs = await SharedPreferences.getInstance();
-      final themeBloc = ThemeBloc(prefs);
+      final themeBloc = DmThemeBloc(prefs: prefs);
 
       await tester.pumpWidget(
-        BlocProvider<ThemeBloc>(
+        BlocProvider<DmThemeBloc>(
           create: (_) => themeBloc,
           child: MaterialApp(
             localizationsDelegates: AppLocale.localizationsDelegates,
@@ -54,10 +53,10 @@ void main() {
     ) async {
       SharedPreferences.setMockInitialValues({});
       final prefs = await SharedPreferences.getInstance();
-      final themeBloc = ThemeBloc(prefs);
+      final themeBloc = DmThemeBloc(prefs: prefs);
 
       await tester.pumpWidget(
-        BlocProvider<ThemeBloc>(
+        BlocProvider<DmThemeBloc>(
           create: (_) => themeBloc,
           child: MaterialApp(
             localizationsDelegates: AppLocale.localizationsDelegates,

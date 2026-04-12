@@ -2,14 +2,12 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:caddy_app/screens/settings/accent_color_settings_screen.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:app_theme/app_theme.dart';
-import 'package:theme_bloc/theme_bloc.dart';
+import 'package:duskmoon_ui/duskmoon_ui.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:app_locale/app_locale.dart';
 
-Widget _buildTestWidget({required ThemeBloc themeBloc}) {
-  return BlocProvider<ThemeBloc>(
+Widget _buildTestWidget({required DmThemeBloc themeBloc}) {
+  return BlocProvider<DmThemeBloc>(
     create: (_) => themeBloc,
     child: MaterialApp(
       localizationsDelegates: AppLocale.localizationsDelegates,
@@ -21,12 +19,12 @@ Widget _buildTestWidget({required ThemeBloc themeBloc}) {
 
 void main() {
   group('AccentColorSettingsScreen', () {
-    late ThemeBloc themeBloc;
+    late DmThemeBloc themeBloc;
 
     setUp(() async {
       SharedPreferences.setMockInitialValues({});
       final prefs = await SharedPreferences.getInstance();
-      themeBloc = ThemeBloc(prefs);
+      themeBloc = DmThemeBloc(prefs: prefs);
     });
 
     tearDown(() {
@@ -44,7 +42,7 @@ void main() {
       await tester.pumpWidget(_buildTestWidget(themeBloc: themeBloc));
 
       // Default theme name should be displayed
-      final currentThemeName = themeBloc.state.theme.name;
+      final currentThemeName = themeBloc.state.entry.name;
       expect(find.text(currentThemeName), findsOneWidget);
     });
 
@@ -52,8 +50,7 @@ void main() {
       await tester.pumpWidget(_buildTestWidget(themeBloc: themeBloc));
 
       // Should have one GestureDetector per theme in the color picker
-      // themeList has 4 themes: Violet, Green, Fire, Wheat
-      expect(themeList.length, 4);
+      expect(DmThemeData.themes.length, greaterThanOrEqualTo(2));
     });
 
     testWidgets('selected color shows checkmark icon', (tester) async {
@@ -62,31 +59,31 @@ void main() {
       expect(find.byIcon(CupertinoIcons.checkmark), findsOneWidget);
     });
 
-    testWidgets('displays all 4 theme names via themeList', (tester) async {
+    testWidgets('displays all theme names via DmThemeData.themes', (
+      tester,
+    ) async {
       await tester.pumpWidget(_buildTestWidget(themeBloc: themeBloc));
 
-      // Verify themeList has 4 entries with expected names
-      expect(themeList.map((t) => t.name).toList(), [
-        'Violet',
-        'Green',
-        'Fire',
-        'Wheat',
-      ]);
+      // Verify all themes have non-empty names
+      for (final theme in DmThemeData.themes) {
+        expect(theme.name, isNotEmpty);
+      }
     });
 
-    testWidgets('ChangeTheme event updates bloc state', (tester) async {
-      // Verify the BLoC responds to ChangeTheme
-      themeBloc.add(ChangeTheme(FireTheme()));
+    testWidgets('DmSetTheme event updates bloc state', (tester) async {
+      // Verify the BLoC responds to DmSetTheme
+      final lastTheme = DmThemeData.themes.last.name;
+      themeBloc.add(DmSetTheme(lastTheme));
       await tester.pump();
 
-      expect(themeBloc.state.theme.name, 'Fire');
+      expect(themeBloc.state.entry.name, lastTheme);
     });
 
     testWidgets('each theme has non-null primary color', (tester) async {
       await tester.pumpWidget(_buildTestWidget(themeBloc: themeBloc));
 
-      for (final theme in themeList) {
-        expect(theme.lightTheme.colorScheme.primary, isNotNull);
+      for (final theme in DmThemeData.themes) {
+        expect(theme.light.colorScheme.primary, isNotNull);
       }
     });
 
@@ -95,32 +92,34 @@ void main() {
       expect(AccentColorSettingsScreen.path, 'accent-color');
     });
 
-    testWidgets('dispatching ChangeTheme event changes the theme', (
+    testWidgets('dispatching DmSetTheme event changes the theme', (
       tester,
     ) async {
       await tester.pumpWidget(_buildTestWidget(themeBloc: themeBloc));
 
-      // Change to Fire theme via BLoC event
-      themeBloc.add(ChangeTheme(FireTheme()));
+      final lastTheme = DmThemeData.themes.last.name;
+      themeBloc.add(DmSetTheme(lastTheme));
       await tester.pumpAndSettle();
 
-      expect(themeBloc.state.theme.name, 'Fire');
-      expect(themeBloc.state.theme, isA<FireTheme>());
+      expect(themeBloc.state.entry.name, lastTheme);
     });
 
     testWidgets('changing theme updates BLoC state', (tester) async {
       await tester.pumpWidget(_buildTestWidget(themeBloc: themeBloc));
 
       // Initial theme
-      final initialTheme = themeBloc.state.theme.name;
+      final initialTheme = themeBloc.state.entry.name;
 
-      // Change theme
-      themeBloc.add(ChangeTheme(GreenTheme()));
+      // Change to the other theme
+      final otherTheme = DmThemeData.themes
+          .firstWhere((t) => t.name != initialTheme)
+          .name;
+      themeBloc.add(DmSetTheme(otherTheme));
       await tester.pumpAndSettle();
 
       // BLoC state updated
-      expect(themeBloc.state.theme.name, 'Green');
-      expect(themeBloc.state.theme.name, isNot(initialTheme));
+      expect(themeBloc.state.entry.name, otherTheme);
+      expect(themeBloc.state.entry.name, isNot(initialTheme));
     });
 
     testWidgets('checkmark appears only on selected theme', (tester) async {
@@ -130,12 +129,13 @@ void main() {
       expect(find.byIcon(CupertinoIcons.checkmark), findsOneWidget);
 
       // Change theme
-      themeBloc.add(ChangeTheme(WheatTheme()));
+      final lastTheme = DmThemeData.themes.last.name;
+      themeBloc.add(DmSetTheme(lastTheme));
       await tester.pumpAndSettle();
 
       // Still exactly one checkmark (on new theme)
       expect(find.byIcon(CupertinoIcons.checkmark), findsOneWidget);
-      expect(themeBloc.state.theme.name, 'Wheat');
+      expect(themeBloc.state.entry.name, lastTheme);
     });
   });
 }

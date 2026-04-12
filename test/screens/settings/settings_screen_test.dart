@@ -1,18 +1,17 @@
 import 'package:flutter/material.dart';
 import 'package:caddy_app/screens/settings/settings_screen.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:theme_bloc/theme_bloc.dart';
+import 'package:duskmoon_ui/duskmoon_ui.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:app_locale/app_locale.dart';
 
 Widget _buildTestWidget({
-  required ThemeBloc themeBloc,
+  required DmThemeBloc themeBloc,
   required SharedPreferences sharedPreferences,
 }) {
   return RepositoryProvider<SharedPreferences>(
     create: (context) => sharedPreferences,
-    child: BlocProvider<ThemeBloc>(
+    child: BlocProvider<DmThemeBloc>(
       create: (_) => themeBloc,
       child: MaterialApp(
         localizationsDelegates: AppLocale.localizationsDelegates,
@@ -25,13 +24,13 @@ Widget _buildTestWidget({
 
 void main() {
   group('SettingsScreen', () {
-    late ThemeBloc themeBloc;
+    late DmThemeBloc themeBloc;
     late SharedPreferences sharedPreferences;
 
     setUp(() async {
       SharedPreferences.setMockInitialValues({});
       sharedPreferences = await SharedPreferences.getInstance();
-      themeBloc = ThemeBloc(sharedPreferences);
+      themeBloc = DmThemeBloc(prefs: sharedPreferences);
     });
 
     tearDown(() {
@@ -125,7 +124,7 @@ void main() {
         ),
       );
 
-      final currentThemeName = themeBloc.state.theme.name;
+      final currentThemeName = themeBloc.state.entry.name;
       expect(find.text(currentThemeName), findsOneWidget);
     });
 
@@ -141,8 +140,8 @@ void main() {
       expect(find.byIcon(Icons.brightness_auto), findsOneWidget);
     });
 
-    testWidgets('ChangeThemeMode event updates bloc state', (tester) async {
-      themeBloc.add(const ChangeThemeMode(ThemeMode.dark));
+    testWidgets('DmSetThemeMode event updates bloc state', (tester) async {
+      themeBloc.add(const DmSetThemeMode(ThemeMode.dark));
       await tester.pump();
 
       expect(themeBloc.state.themeMode, ThemeMode.dark);

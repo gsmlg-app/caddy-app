@@ -3,10 +3,9 @@ import 'package:app_secure_storage/app_secure_storage.dart';
 import 'package:caddy_bloc/caddy_bloc.dart';
 import 'package:caddy_service/caddy_service.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:theme_bloc/theme_bloc.dart';
+import 'package:duskmoon_ui/duskmoon_ui.dart';
 
 import 'package:caddy_app/app.dart';
 
@@ -188,7 +187,7 @@ void main() {
     testWidgets('App renders with full provider hierarchy', (tester) async {
       SharedPreferences.setMockInitialValues({});
       final prefs = await SharedPreferences.getInstance();
-      final themeBloc = ThemeBloc(prefs);
+      final themeBloc = DmThemeBloc(prefs: prefs);
       final database = AppDatabase.forTesting();
       final vault = InMemoryVaultRepository();
       final mockService = MockCaddyService();
@@ -206,15 +205,15 @@ void main() {
           ],
           child: MultiBlocProvider(
             providers: [
-              BlocProvider<ThemeBloc>.value(value: themeBloc),
+              BlocProvider<DmThemeBloc>.value(value: themeBloc),
               BlocProvider<CaddyBloc>.value(value: caddyBloc),
             ],
-            child: BlocBuilder<ThemeBloc, ThemeState>(
+            child: BlocBuilder<DmThemeBloc, DmThemeState>(
               builder: (context, state) {
                 return MaterialApp(
                   key: const Key('app'),
-                  theme: state.theme.lightTheme,
-                  darkTheme: state.theme.darkTheme,
+                  theme: state.entry.light,
+                  darkTheme: state.entry.dark,
                   themeMode: state.themeMode,
                   home: const Scaffold(body: Text('Test')),
                 );
@@ -234,7 +233,7 @@ void main() {
       expect(materialApp.darkTheme, isNotNull);
       expect(materialApp.themeMode, ThemeMode.system);
 
-      themeBloc.add(const ChangeThemeMode(ThemeMode.dark));
+      themeBloc.add(const DmSetThemeMode(ThemeMode.dark));
       await tester.pumpAndSettle();
 
       final updatedApp = tester.widget<MaterialApp>(
@@ -247,17 +246,17 @@ void main() {
       await database.close();
     });
 
-    testWidgets('ThemeBloc drives theme updates in BlocBuilder', (
+    testWidgets('DmThemeBloc drives theme updates in BlocBuilder', (
       tester,
     ) async {
       SharedPreferences.setMockInitialValues({});
       final prefs = await SharedPreferences.getInstance();
-      final themeBloc = ThemeBloc(prefs);
+      final themeBloc = DmThemeBloc(prefs: prefs);
 
       await tester.pumpWidget(
-        BlocProvider<ThemeBloc>.value(
+        BlocProvider<DmThemeBloc>.value(
           value: themeBloc,
-          child: BlocBuilder<ThemeBloc, ThemeState>(
+          child: BlocBuilder<DmThemeBloc, DmThemeState>(
             builder: (context, state) {
               return MaterialApp(
                 key: const Key('themed-app'),
@@ -272,7 +271,7 @@ void main() {
       var app = tester.widget<MaterialApp>(find.byKey(const Key('themed-app')));
       expect(app.themeMode, ThemeMode.system);
 
-      themeBloc.add(const ChangeThemeMode(ThemeMode.light));
+      themeBloc.add(const DmSetThemeMode(ThemeMode.light));
       await tester.pumpAndSettle();
 
       app = tester.widget<MaterialApp>(find.byKey(const Key('themed-app')));

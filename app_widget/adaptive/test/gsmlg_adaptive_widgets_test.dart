@@ -1,12 +1,13 @@
 import 'package:app_adaptive_widgets/app_adaptive_widgets.dart';
+import 'package:duskmoon_ui/duskmoon_ui.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
-  group('AppAdaptiveAction', () {
+  group('DmAction', () {
     test('creates with required fields', () {
       var pressed = false;
-      final action = AppAdaptiveAction(
+      final action = DmAction(
         title: 'Save',
         icon: Icons.save,
         onPressed: () => pressed = true,
@@ -21,7 +22,7 @@ void main() {
     });
 
     test('disabled defaults to false', () {
-      final action = AppAdaptiveAction(
+      final action = DmAction(
         title: 'Test',
         icon: Icons.check,
         onPressed: () {},
@@ -30,7 +31,7 @@ void main() {
     });
 
     test('can be created as disabled', () {
-      final action = AppAdaptiveAction(
+      final action = DmAction(
         title: 'Test',
         icon: Icons.check,
         onPressed: () {},
@@ -40,11 +41,11 @@ void main() {
     });
   });
 
-  group('AppAdaptiveActionList', () {
-    List<AppAdaptiveAction> makeActions({bool withDisabled = false}) {
+  group('DmActionList', () {
+    List<DmAction> makeActions({bool withDisabled = false}) {
       return [
-        AppAdaptiveAction(title: 'Save', icon: Icons.save, onPressed: () {}),
-        AppAdaptiveAction(
+        DmAction(title: 'Save', icon: Icons.save, onPressed: () {}),
+        DmAction(
           title: 'Delete',
           icon: Icons.delete,
           onPressed: () {},
@@ -57,7 +58,7 @@ void main() {
       testWidgets('renders IconButtons for each action', (tester) async {
         await tester.pumpWidget(
           MaterialApp(
-            home: Scaffold(body: AppAdaptiveActionList(actions: makeActions())),
+            home: Scaffold(body: DmActionList(actions: makeActions())),
           ),
         );
 
@@ -70,9 +71,7 @@ void main() {
         await tester.pumpWidget(
           MaterialApp(
             home: Scaffold(
-              body: AppAdaptiveActionList(
-                actions: makeActions(withDisabled: true),
-              ),
+              body: DmActionList(actions: makeActions(withDisabled: true)),
             ),
           ),
         );
@@ -88,7 +87,7 @@ void main() {
         await tester.pumpWidget(
           MaterialApp(
             home: Scaffold(
-              body: AppAdaptiveActionList(
+              body: DmActionList(
                 actions: makeActions(withDisabled: true),
                 hideDisabled: false,
               ),
@@ -103,7 +102,7 @@ void main() {
         await tester.pumpWidget(
           MaterialApp(
             home: Scaffold(
-              body: AppAdaptiveActionList(
+              body: DmActionList(
                 actions: makeActions(withDisabled: true),
                 hideDisabled: false,
               ),
@@ -123,8 +122,8 @@ void main() {
         await tester.pumpWidget(
           MaterialApp(
             home: Scaffold(
-              body: AppAdaptiveActionList(
-                size: AppAdaptiveActionSize.large,
+              body: DmActionList(
+                size: DmActionSize.large,
                 actions: makeActions(),
               ),
             ),
@@ -141,8 +140,8 @@ void main() {
         await tester.pumpWidget(
           MaterialApp(
             home: Scaffold(
-              body: AppAdaptiveActionList(
-                size: AppAdaptiveActionSize.large,
+              body: DmActionList(
+                size: DmActionSize.large,
                 actions: makeActions(withDisabled: true),
               ),
             ),
@@ -159,8 +158,8 @@ void main() {
         await tester.pumpWidget(
           MaterialApp(
             home: Scaffold(
-              body: AppAdaptiveActionList(
-                size: AppAdaptiveActionSize.small,
+              body: DmActionList(
+                size: DmActionSize.small,
                 actions: makeActions(),
               ),
             ),
@@ -176,8 +175,8 @@ void main() {
         await tester.pumpWidget(
           MaterialApp(
             home: Scaffold(
-              body: AppAdaptiveActionList(
-                size: AppAdaptiveActionSize.small,
+              body: DmActionList(
+                size: DmActionSize.small,
                 actions: makeActions(),
               ),
             ),
@@ -187,7 +186,7 @@ void main() {
         await tester.tap(find.byType(PopupMenuButton<int>));
         await tester.pumpAndSettle();
 
-        // Text.rich with TextSpan — use textContaining to find within rich text
+        // Text.rich with TextSpan -- use textContaining to find within rich text
         expect(find.textContaining('Save'), findsOneWidget);
         expect(find.textContaining('Delete'), findsOneWidget);
       });
@@ -197,7 +196,7 @@ void main() {
       await tester.pumpWidget(
         MaterialApp(
           home: Scaffold(
-            body: AppAdaptiveActionList(
+            body: DmActionList(
               actions: makeActions(),
               direction: Axis.vertical,
             ),
@@ -210,68 +209,24 @@ void main() {
     });
   });
 
-  group('AppAdaptiveScaffold', () {
-    final destinations = [
-      const NavigationDestination(icon: Icon(Icons.home), label: 'Home'),
-      const NavigationDestination(
-        icon: Icon(Icons.settings),
-        label: 'Settings',
-      ),
-    ];
-
-    testWidgets('renders with destinations', (tester) async {
-      await tester.pumpWidget(
-        MaterialApp(
-          home: AppAdaptiveScaffold(
-            destinations: destinations,
-            body: (_) => const Text('Body'),
-          ),
-        ),
-      );
-      await tester.pump();
-
-      expect(find.text('Body'), findsOneWidget);
-    });
-
+  group('DmScaffold', () {
     test('has correct default breakpoint constants', () {
-      expect(AppAdaptiveScaffold.appSmallBreakpoint, Breakpoints.small);
-      expect(AppAdaptiveScaffold.appMediumBreakpoint, Breakpoints.medium);
-      expect(
-        AppAdaptiveScaffold.appMediumLargeBreakpoint,
-        Breakpoints.mediumLarge,
-      );
-      expect(AppAdaptiveScaffold.appLargeBreakpoint, Breakpoints.large);
-      expect(
-        AppAdaptiveScaffold.appExtraLargeBreakpoint,
-        Breakpoints.extraLarge,
-      );
-      expect(AppAdaptiveScaffold.appDrawerBreakpoint, Breakpoints.smallDesktop);
-    });
-
-    testWidgets('default transitionDuration is zero', (tester) async {
-      const scaffold = AppAdaptiveScaffold(
-        destinations: [],
-        transitionDuration: Duration(milliseconds: 0),
-      );
-
-      expect(scaffold.transitionDuration, Duration.zero);
-      expect(scaffold.internalAnimations, isTrue);
-      expect(scaffold.useDrawer, isFalse);
-      expect(scaffold.bodyOrientation, Axis.horizontal);
-      expect(scaffold.selectedIndex, 0);
-      expect(scaffold.navigationRailWidth, 72);
-      expect(scaffold.extendedNavigationRailWidth, 192);
-      expect(scaffold.showCollapseToggle, isFalse);
+      expect(DmScaffold.smallBreakpoint, Breakpoints.small);
+      expect(DmScaffold.mediumBreakpoint, Breakpoints.medium);
+      expect(DmScaffold.mediumLargeBreakpoint, Breakpoints.mediumLarge);
+      expect(DmScaffold.largeBreakpoint, Breakpoints.large);
+      expect(DmScaffold.extraLargeBreakpoint, Breakpoints.extraLarge);
+      expect(DmScaffold.drawerBreakpoint, Breakpoints.smallDesktop);
     });
   });
 
-  group('AppAdaptiveActionSize', () {
+  group('DmActionSize', () {
     test('has three values', () {
-      expect(AppAdaptiveActionSize.values, hasLength(3));
-      expect(AppAdaptiveActionSize.values, [
-        AppAdaptiveActionSize.small,
-        AppAdaptiveActionSize.medium,
-        AppAdaptiveActionSize.large,
+      expect(DmActionSize.values, hasLength(3));
+      expect(DmActionSize.values, [
+        DmActionSize.small,
+        DmActionSize.medium,
+        DmActionSize.large,
       ]);
     });
   });

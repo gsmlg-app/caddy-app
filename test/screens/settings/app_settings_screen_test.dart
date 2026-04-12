@@ -1,18 +1,17 @@
 import 'package:flutter/material.dart';
 import 'package:caddy_app/screens/settings/app_settings_screen.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:theme_bloc/theme_bloc.dart';
+import 'package:duskmoon_ui/duskmoon_ui.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:app_locale/app_locale.dart';
 
 Widget _buildTestWidget({
   required SharedPreferences prefs,
-  required ThemeBloc themeBloc,
+  required DmThemeBloc themeBloc,
 }) {
   return RepositoryProvider<SharedPreferences>(
     create: (context) => prefs,
-    child: BlocProvider<ThemeBloc>(
+    child: BlocProvider<DmThemeBloc>(
       create: (context) => themeBloc,
       child: MaterialApp(
         localizationsDelegates: AppLocale.localizationsDelegates,
@@ -26,12 +25,12 @@ Widget _buildTestWidget({
 void main() {
   group('AppSettingsScreen', () {
     late SharedPreferences sharedPreferences;
-    late ThemeBloc themeBloc;
+    late DmThemeBloc themeBloc;
 
     setUp(() async {
       SharedPreferences.setMockInitialValues({});
       sharedPreferences = await SharedPreferences.getInstance();
-      themeBloc = ThemeBloc(sharedPreferences);
+      themeBloc = DmThemeBloc(prefs: sharedPreferences);
     });
 
     tearDown(() {

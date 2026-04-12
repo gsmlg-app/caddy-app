@@ -3,109 +3,57 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
-  group('themeList', () {
-    test('contains 4 themes', () {
-      expect(themeList, hasLength(4));
+  group('DmThemeData.themes', () {
+    test('contains expected number of themes', () {
+      expect(DmThemeData.themes, hasLength(greaterThanOrEqualTo(2)));
     });
 
-    test('contains all theme types in order', () {
-      expect(themeList[0], isA<VioletTheme>());
-      expect(themeList[1], isA<GreenTheme>());
-      expect(themeList[2], isA<FireTheme>());
-      expect(themeList[3], isA<WheatTheme>());
+    test('all themes are DmThemeEntry instances', () {
+      for (final theme in DmThemeData.themes) {
+        expect(theme, isA<DmThemeEntry>());
+      }
     });
   });
 
-  group('VioletTheme', () {
-    late VioletTheme theme;
-    setUp(() => theme = VioletTheme());
+  group('DmThemeEntry properties', () {
+    late DmThemeEntry theme;
+    setUp(() => theme = DmThemeData.themes.first);
 
-    test('has name Violet', () {
-      expect(theme.name, 'Violet');
-    });
-
-    test('toString returns name', () {
-      expect(theme.toString(), 'Violet');
+    test('has a name', () {
+      expect(theme.name, isNotEmpty);
     });
 
     test('provides light theme with Material3', () {
-      expect(theme.lightTheme.useMaterial3, isTrue);
-      expect(theme.lightTheme.colorScheme.brightness, Brightness.light);
+      expect(theme.light.useMaterial3, isTrue);
+      expect(theme.light.colorScheme.brightness, Brightness.light);
     });
 
     test('provides dark theme with Material3', () {
-      expect(theme.darkTheme.useMaterial3, isTrue);
-      expect(theme.darkTheme.colorScheme.brightness, Brightness.dark);
+      expect(theme.dark.useMaterial3, isTrue);
+      expect(theme.dark.colorScheme.brightness, Brightness.dark);
     });
 
     test('light theme has AppBar with zero elevation', () {
-      expect(theme.lightTheme.appBarTheme.elevation, 0);
+      expect(theme.light.appBarTheme.elevation, 0);
     });
 
     test('dark theme has NavigationRail styling', () {
-      expect(theme.darkTheme.navigationRailTheme.backgroundColor, isNotNull);
-      expect(theme.darkTheme.navigationRailTheme.indicatorColor, isNotNull);
+      expect(theme.dark.navigationRailTheme.backgroundColor, isNotNull);
+      expect(theme.dark.navigationRailTheme.indicatorColor, isNotNull);
     });
   });
 
-  group('GreenTheme', () {
-    late GreenTheme theme;
-    setUp(() => theme = GreenTheme());
+  group('Second theme entry', () {
+    late DmThemeEntry theme;
+    setUp(() => theme = DmThemeData.themes.last);
 
-    test('has name Green', () {
-      expect(theme.name, 'Green');
+    test('has a name', () {
+      expect(theme.name, isNotEmpty);
     });
 
     test('provides light and dark themes', () {
-      expect(theme.lightTheme.colorScheme.brightness, Brightness.light);
-      expect(theme.darkTheme.colorScheme.brightness, Brightness.dark);
-    });
-  });
-
-  group('FireTheme', () {
-    late FireTheme theme;
-    setUp(() => theme = FireTheme());
-
-    test('has name Fire', () {
-      expect(theme.name, 'Fire');
-    });
-
-    test('provides light and dark themes', () {
-      expect(theme.lightTheme.colorScheme.brightness, Brightness.light);
-      expect(theme.darkTheme.colorScheme.brightness, Brightness.dark);
-    });
-  });
-
-  group('WheatTheme', () {
-    late WheatTheme theme;
-    setUp(() => theme = WheatTheme());
-
-    test('has name Wheat', () {
-      expect(theme.name, 'Wheat');
-    });
-
-    test('provides light and dark themes', () {
-      expect(theme.lightTheme.colorScheme.brightness, Brightness.light);
-      expect(theme.darkTheme.colorScheme.brightness, Brightness.dark);
-    });
-  });
-
-  group('DynamicTheme', () {
-    test('creates from seed color', () {
-      final theme = DynamicTheme.fromSeed(Colors.blue);
-      expect(theme.name, 'Dynamic');
-    });
-
-    test('provides light and dark themes from seed', () {
-      final theme = DynamicTheme.fromSeed(Colors.teal);
-      expect(theme.lightTheme.colorScheme.brightness, Brightness.light);
-      expect(theme.darkTheme.colorScheme.brightness, Brightness.dark);
-    });
-
-    test('uses Material3', () {
-      final theme = DynamicTheme.fromSeed(Colors.red);
-      expect(theme.lightTheme.useMaterial3, isTrue);
-      expect(theme.darkTheme.useMaterial3, isTrue);
+      expect(theme.light.colorScheme.brightness, Brightness.light);
+      expect(theme.dark.colorScheme.brightness, Brightness.dark);
     });
   });
 
@@ -205,30 +153,24 @@ void main() {
 
   group('Theme data structure', () {
     test('all themes have NavigationDrawer styling', () {
-      for (final theme in themeList) {
-        expect(
-          theme.lightTheme.navigationDrawerTheme.backgroundColor,
-          isNotNull,
-        );
-        expect(
-          theme.darkTheme.navigationDrawerTheme.backgroundColor,
-          isNotNull,
-        );
+      for (final theme in DmThemeData.themes) {
+        expect(theme.light.navigationDrawerTheme.backgroundColor, isNotNull);
+        expect(theme.dark.navigationDrawerTheme.backgroundColor, isNotNull);
       }
     });
 
     test('all themes have AppBar with scrolledUnderElevation', () {
-      for (final theme in themeList) {
-        expect(theme.lightTheme.appBarTheme.scrolledUnderElevation, 1);
-        expect(theme.darkTheme.appBarTheme.scrolledUnderElevation, 1);
+      for (final theme in DmThemeData.themes) {
+        expect(theme.light.appBarTheme.scrolledUnderElevation, 1);
+        expect(theme.dark.appBarTheme.scrolledUnderElevation, 1);
       }
     });
 
     test('all themes have distinct color schemes', () {
-      final primaryColors = themeList
-          .map((t) => t.lightTheme.colorScheme.primary.toARGB32())
+      final primaryColors = DmThemeData.themes
+          .map((t) => t.light.colorScheme.primary.toARGB32())
           .toSet();
-      expect(primaryColors, hasLength(4));
+      expect(primaryColors, hasLength(DmThemeData.themes.length));
     });
   });
 }

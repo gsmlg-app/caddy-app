@@ -1,12 +1,11 @@
-import 'package:app_theme/app_theme.dart';
 import 'package:bloc_test/bloc_test.dart';
+import 'package:duskmoon_ui/duskmoon_ui.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:theme_bloc/theme_bloc.dart';
 
 void main() {
-  group('ThemeBloc', () {
+  group('DmThemeBloc', () {
     late SharedPreferences prefs;
 
     setUp(() async {
@@ -15,21 +14,21 @@ void main() {
     });
 
     test('initial state uses default theme and system mode', () {
-      final bloc = ThemeBloc(prefs);
-      expect(bloc.state.theme.name, themeList.first.name);
+      final bloc = DmThemeBloc(prefs: prefs);
+      expect(bloc.state.entry.name, DmThemeData.themes.first.name);
       expect(bloc.state.themeMode, ThemeMode.system);
       bloc.close();
     });
 
     test('initial state reads saved theme from preferences', () async {
       SharedPreferences.setMockInitialValues({
-        'themeName': themeList.last.name,
+        'themeName': DmThemeData.themes.last.name,
         'themeMode': 'dark',
       });
       final savedPrefs = await SharedPreferences.getInstance();
 
-      final bloc = ThemeBloc(savedPrefs);
-      expect(bloc.state.theme.name, themeList.last.name);
+      final bloc = DmThemeBloc(prefs: savedPrefs);
+      expect(bloc.state.entry.name, DmThemeData.themes.last.name);
       expect(bloc.state.themeMode, ThemeMode.dark);
       bloc.close();
     });
@@ -38,7 +37,7 @@ void main() {
       SharedPreferences.setMockInitialValues({'themeMode': 'light'});
       final savedPrefs = await SharedPreferences.getInstance();
 
-      final bloc = ThemeBloc(savedPrefs);
+      final bloc = DmThemeBloc(prefs: savedPrefs);
       expect(bloc.state.themeMode, ThemeMode.light);
       bloc.close();
     });
@@ -47,7 +46,7 @@ void main() {
       SharedPreferences.setMockInitialValues({'themeMode': 'unknown'});
       final savedPrefs = await SharedPreferences.getInstance();
 
-      final bloc = ThemeBloc(savedPrefs);
+      final bloc = DmThemeBloc(prefs: savedPrefs);
       expect(bloc.state.themeMode, ThemeMode.system);
       bloc.close();
     });
@@ -58,82 +57,97 @@ void main() {
         SharedPreferences.setMockInitialValues({'themeName': 'nonexistent'});
         final savedPrefs = await SharedPreferences.getInstance();
 
-        final bloc = ThemeBloc(savedPrefs);
-        expect(bloc.state.theme.name, themeList.first.name);
+        final bloc = DmThemeBloc(prefs: savedPrefs);
+        expect(bloc.state.entry.name, DmThemeData.themes.first.name);
         bloc.close();
       },
     );
 
-    blocTest<ThemeBloc, ThemeState>(
-      'emits new state when ChangeThemeMode is added',
-      build: () => ThemeBloc(prefs),
-      act: (bloc) => bloc.add(const ChangeThemeMode(ThemeMode.dark)),
+    blocTest<DmThemeBloc, DmThemeState>(
+      'emits new state when DmSetThemeMode is added',
+      build: () => DmThemeBloc(prefs: prefs),
+      act: (bloc) => bloc.add(const DmSetThemeMode(ThemeMode.dark)),
       expect: () => [
-        ThemeState(theme: themeList.first, themeMode: ThemeMode.dark),
+        DmThemeState(
+          themeName: DmThemeData.themes.first.name,
+          themeMode: ThemeMode.dark,
+        ),
       ],
     );
 
-    blocTest<ThemeBloc, ThemeState>(
+    blocTest<DmThemeBloc, DmThemeState>(
       'persists themeMode to SharedPreferences',
-      build: () => ThemeBloc(prefs),
-      act: (bloc) => bloc.add(const ChangeThemeMode(ThemeMode.light)),
+      build: () => DmThemeBloc(prefs: prefs),
+      act: (bloc) => bloc.add(const DmSetThemeMode(ThemeMode.light)),
       verify: (_) {
         expect(prefs.getString('themeMode'), 'light');
       },
     );
 
-    blocTest<ThemeBloc, ThemeState>(
-      'emits new state when ChangeTheme is added',
-      build: () => ThemeBloc(prefs),
-      act: (bloc) => bloc.add(ChangeTheme(themeList.last)),
+    blocTest<DmThemeBloc, DmThemeState>(
+      'emits new state when DmSetTheme is added',
+      build: () => DmThemeBloc(prefs: prefs),
+      act: (bloc) => bloc.add(DmSetTheme(DmThemeData.themes.last.name)),
       expect: () => [
-        ThemeState(theme: themeList.last, themeMode: ThemeMode.system),
+        DmThemeState(
+          themeName: DmThemeData.themes.last.name,
+          themeMode: ThemeMode.system,
+        ),
       ],
     );
 
-    blocTest<ThemeBloc, ThemeState>(
+    blocTest<DmThemeBloc, DmThemeState>(
       'persists themeName to SharedPreferences',
-      build: () => ThemeBloc(prefs),
-      act: (bloc) => bloc.add(ChangeTheme(themeList.last)),
+      build: () => DmThemeBloc(prefs: prefs),
+      act: (bloc) => bloc.add(DmSetTheme(DmThemeData.themes.last.name)),
       verify: (_) {
-        expect(prefs.getString('themeName'), themeList.last.name);
+        expect(prefs.getString('themeName'), DmThemeData.themes.last.name);
       },
     );
 
-    blocTest<ThemeBloc, ThemeState>(
+    blocTest<DmThemeBloc, DmThemeState>(
       'handles multiple sequential theme changes',
-      build: () => ThemeBloc(prefs),
+      build: () => DmThemeBloc(prefs: prefs),
       act: (bloc) {
-        bloc.add(const ChangeThemeMode(ThemeMode.dark));
-        bloc.add(ChangeTheme(themeList.last));
-        bloc.add(const ChangeThemeMode(ThemeMode.light));
+        bloc.add(const DmSetThemeMode(ThemeMode.dark));
+        bloc.add(DmSetTheme(DmThemeData.themes.last.name));
+        bloc.add(const DmSetThemeMode(ThemeMode.light));
       },
       expect: () => [
-        ThemeState(theme: themeList.first, themeMode: ThemeMode.dark),
-        ThemeState(theme: themeList.last, themeMode: ThemeMode.dark),
-        ThemeState(theme: themeList.last, themeMode: ThemeMode.light),
+        DmThemeState(
+          themeName: DmThemeData.themes.first.name,
+          themeMode: ThemeMode.dark,
+        ),
+        DmThemeState(
+          themeName: DmThemeData.themes.last.name,
+          themeMode: ThemeMode.dark,
+        ),
+        DmThemeState(
+          themeName: DmThemeData.themes.last.name,
+          themeMode: ThemeMode.light,
+        ),
       ],
     );
   });
 
-  group('ThemeState', () {
-    test('copyWith returns new state with updated theme', () {
-      final state = ThemeState(theme: themeList.first);
-      final updated = state.copyWith(theme: themeList.last);
-      expect(updated.theme.name, themeList.last.name);
+  group('DmThemeState', () {
+    test('copyWith returns new state with updated themeName', () {
+      final state = DmThemeState(themeName: DmThemeData.themes.first.name);
+      final updated = state.copyWith(themeName: DmThemeData.themes.last.name);
+      expect(updated.entry.name, DmThemeData.themes.last.name);
       expect(updated.themeMode, ThemeMode.system);
     });
 
     test('copyWith returns new state with updated themeMode', () {
-      final state = ThemeState(theme: themeList.first);
+      final state = DmThemeState(themeName: DmThemeData.themes.first.name);
       final updated = state.copyWith(themeMode: ThemeMode.dark);
       expect(updated.themeMode, ThemeMode.dark);
-      expect(updated.theme.name, themeList.first.name);
+      expect(updated.entry.name, DmThemeData.themes.first.name);
     });
 
     test('copyWith with no arguments returns equivalent state', () {
-      final state = ThemeState(
-        theme: themeList.first,
+      final state = DmThemeState(
+        themeName: DmThemeData.themes.first.name,
         themeMode: ThemeMode.dark,
       );
       final updated = state.copyWith();
@@ -141,30 +155,30 @@ void main() {
     });
 
     test('equality based on props', () {
-      final state1 = ThemeState(
-        theme: themeList.first,
+      final state1 = DmThemeState(
+        themeName: DmThemeData.themes.first.name,
         themeMode: ThemeMode.dark,
       );
-      final state2 = ThemeState(
-        theme: themeList.first,
+      final state2 = DmThemeState(
+        themeName: DmThemeData.themes.first.name,
         themeMode: ThemeMode.dark,
       );
       expect(state1, equals(state2));
     });
 
     test('inequality when theme differs', () {
-      final state1 = ThemeState(theme: themeList.first);
-      final state2 = ThemeState(theme: themeList.last);
+      final state1 = DmThemeState(themeName: DmThemeData.themes.first.name);
+      final state2 = DmThemeState(themeName: DmThemeData.themes.last.name);
       expect(state1, isNot(equals(state2)));
     });
 
     test('inequality when themeMode differs', () {
-      final state1 = ThemeState(
-        theme: themeList.first,
+      final state1 = DmThemeState(
+        themeName: DmThemeData.themes.first.name,
         themeMode: ThemeMode.light,
       );
-      final state2 = ThemeState(
-        theme: themeList.first,
+      final state2 = DmThemeState(
+        themeName: DmThemeData.themes.first.name,
         themeMode: ThemeMode.dark,
       );
       expect(state1, isNot(equals(state2)));

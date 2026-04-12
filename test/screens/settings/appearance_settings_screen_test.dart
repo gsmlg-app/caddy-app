@@ -1,13 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:caddy_app/screens/settings/appearance_settings_screen.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:theme_bloc/theme_bloc.dart';
+import 'package:duskmoon_ui/duskmoon_ui.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:app_locale/app_locale.dart';
 
-Widget _buildTestWidget({required ThemeBloc themeBloc}) {
-  return BlocProvider<ThemeBloc>(
+Widget _buildTestWidget({required DmThemeBloc themeBloc}) {
+  return BlocProvider<DmThemeBloc>(
     create: (_) => themeBloc,
     child: MaterialApp(
       localizationsDelegates: AppLocale.localizationsDelegates,
@@ -19,12 +18,12 @@ Widget _buildTestWidget({required ThemeBloc themeBloc}) {
 
 void main() {
   group('AppearanceSettingsScreen', () {
-    late ThemeBloc themeBloc;
+    late DmThemeBloc themeBloc;
 
     setUp(() async {
       SharedPreferences.setMockInitialValues({});
       final prefs = await SharedPreferences.getInstance();
-      themeBloc = ThemeBloc(prefs);
+      themeBloc = DmThemeBloc(prefs: prefs);
     });
 
     tearDown(() {
@@ -47,9 +46,7 @@ void main() {
       expect(find.text('System'), findsOneWidget);
     });
 
-    testWidgets('tapping light mode dispatches ChangeThemeMode', (
-      tester,
-    ) async {
+    testWidgets('tapping light mode dispatches DmSetThemeMode', (tester) async {
       await tester.pumpWidget(_buildTestWidget(themeBloc: themeBloc));
 
       await tester.tap(find.text('Light'));
@@ -58,7 +55,7 @@ void main() {
       expect(themeBloc.state.themeMode, ThemeMode.light);
     });
 
-    testWidgets('tapping dark mode dispatches ChangeThemeMode', (tester) async {
+    testWidgets('tapping dark mode dispatches DmSetThemeMode', (tester) async {
       await tester.pumpWidget(_buildTestWidget(themeBloc: themeBloc));
 
       await tester.tap(find.text('Dark'));
@@ -67,11 +64,11 @@ void main() {
       expect(themeBloc.state.themeMode, ThemeMode.dark);
     });
 
-    testWidgets('tapping system mode dispatches ChangeThemeMode', (
+    testWidgets('tapping system mode dispatches DmSetThemeMode', (
       tester,
     ) async {
       // First switch to dark, then back to system
-      themeBloc.add(const ChangeThemeMode(ThemeMode.dark));
+      themeBloc.add(const DmSetThemeMode(ThemeMode.dark));
       await tester.pumpWidget(_buildTestWidget(themeBloc: themeBloc));
       await tester.pump();
 
