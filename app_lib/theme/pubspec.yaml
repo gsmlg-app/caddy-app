@@ -7,12 +7,9 @@ environment:
 resolution: workspace
 
 dependencies:
-  bloc: ^9.0.0
-  equatable: ^2.0.5
   flutter:
     sdk: flutter
-  google_fonts: ^6.2.0
-  shared_preferences: ^2.0.17
+  duskmoon_ui: any
 
 dev_dependencies:
   flutter_test:
