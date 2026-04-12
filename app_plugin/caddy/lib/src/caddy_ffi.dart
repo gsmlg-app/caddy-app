@@ -2,6 +2,7 @@ import 'dart:ffi';
 import 'dart:io';
 
 import 'package:ffi/ffi.dart';
+import 'package:flutter/foundation.dart';
 
 typedef _StartCaddyC = Pointer<Utf8> Function(Pointer<Utf8> configJSON);
 typedef _StartCaddyDart = Pointer<Utf8> Function(Pointer<Utf8> configJSON);
@@ -18,84 +19,134 @@ typedef _GetCaddyStatusDart = Pointer<Utf8> Function();
 typedef _SetEnvironmentC = Pointer<Utf8> Function(Pointer<Utf8> envJSON);
 typedef _SetEnvironmentDart = Pointer<Utf8> Function(Pointer<Utf8> envJSON);
 
-class CaddyFfi {
-  CaddyFfi() : _lib = _loadLibrary();
+typedef _AdaptCaddyfileC = Pointer<Utf8> Function(Pointer<Utf8> caddyfileText);
+typedef _AdaptCaddyfileDart = Pointer<Utf8> Function(
+  Pointer<Utf8> caddyfileText,
+);
 
-  final DynamicLibrary _lib;
-
-  late final _StartCaddyDart _startCaddy = _lib
-      .lookupFunction<_StartCaddyC, _StartCaddyDart>('StartCaddy');
-
-  late final _StopCaddyDart _stopCaddy = _lib
-      .lookupFunction<_StopCaddyC, _StopCaddyDart>('StopCaddy');
-
-  late final _ReloadCaddyDart _reloadCaddy = _lib
-      .lookupFunction<_ReloadCaddyC, _ReloadCaddyDart>('ReloadCaddy');
-
-  late final _GetCaddyStatusDart _getCaddyStatus = _lib
-      .lookupFunction<_GetCaddyStatusC, _GetCaddyStatusDart>('GetCaddyStatus');
-
-  late final _SetEnvironmentDart _setEnvironment = _lib
-      .lookupFunction<_SetEnvironmentC, _SetEnvironmentDart>('SetEnvironment');
-
-  static DynamicLibrary _loadLibrary() {
-    if (Platform.isLinux) {
-      return DynamicLibrary.open('libcaddy_bridge.so');
-    } else if (Platform.isMacOS) {
-      return DynamicLibrary.open('libcaddy_bridge.dylib');
-    }
+/// Absolute path to the Caddy bridge shared library.
+/// Resolved once from the executable location so it works in both the main
+/// isolate and compute() isolates.
+final String _resolvedLibPath = () {
+  final String name;
+  if (Platform.isLinux) {
+    name = 'libcaddy_bridge.so';
+  } else if (Platform.isMacOS) {
+    name = 'libcaddy_bridge.dylib';
+  } else {
     throw UnsupportedError(
       'CaddyFfi is not supported on ${Platform.operatingSystem}',
     );
   }
+  final exeDir = File(Platform.resolvedExecutable).parent.path;
+  return '$exeDir/lib/$name';
+}();
 
-  String start(String configJSON) {
-    final configPtr = configJSON.toNativeUtf8();
-    try {
-      final resultPtr = _startCaddy(configPtr);
-      final result = resultPtr.toDartString();
-      calloc.free(resultPtr);
-      return result;
-    } finally {
-      calloc.free(configPtr);
-    }
+// ---------------------------------------------------------------------------
+// Top-level functions for compute().
+//
+// The Go shared library must be loaded on the main isolate FIRST (via the
+// CaddyFfi constructor) so that the Go runtime fully initialises. Subsequent
+// DynamicLibrary.open() calls in compute() isolates reuse the already-loaded
+// library without re-running init(), avoiding a CGO deadlock.
+// ---------------------------------------------------------------------------
+
+String _doStart(String configJSON) {
+  final lib = DynamicLibrary.open(_resolvedLibPath);
+  final fn = lib.lookupFunction<_StartCaddyC, _StartCaddyDart>('StartCaddy');
+  final ptr = configJSON.toNativeUtf8();
+  try {
+    final res = fn(ptr);
+    final s = res.toDartString();
+    calloc.free(res);
+    return s;
+  } finally {
+    calloc.free(ptr);
+  }
+}
+
+String _doStop(void _) {
+  final lib = DynamicLibrary.open(_resolvedLibPath);
+  final fn = lib.lookupFunction<_StopCaddyC, _StopCaddyDart>('StopCaddy');
+  final res = fn();
+  final s = res.toDartString();
+  calloc.free(res);
+  return s;
+}
+
+String _doReload(String configJSON) {
+  final lib = DynamicLibrary.open(_resolvedLibPath);
+  final fn =
+      lib.lookupFunction<_ReloadCaddyC, _ReloadCaddyDart>('ReloadCaddy');
+  final ptr = configJSON.toNativeUtf8();
+  try {
+    final res = fn(ptr);
+    final s = res.toDartString();
+    calloc.free(res);
+    return s;
+  } finally {
+    calloc.free(ptr);
+  }
+}
+
+String _doStatus(void _) {
+  final lib = DynamicLibrary.open(_resolvedLibPath);
+  final fn = lib
+      .lookupFunction<_GetCaddyStatusC, _GetCaddyStatusDart>('GetCaddyStatus');
+  final res = fn();
+  final s = res.toDartString();
+  calloc.free(res);
+  return s;
+}
+
+String _doSetEnvironment(String envJSON) {
+  final lib = DynamicLibrary.open(_resolvedLibPath);
+  final fn = lib
+      .lookupFunction<_SetEnvironmentC, _SetEnvironmentDart>('SetEnvironment');
+  final ptr = envJSON.toNativeUtf8();
+  try {
+    final res = fn(ptr);
+    final s = res.toDartString();
+    calloc.free(res);
+    return s;
+  } finally {
+    calloc.free(ptr);
+  }
+}
+
+String _doAdaptCaddyfile(String caddyfileText) {
+  final lib = DynamicLibrary.open(_resolvedLibPath);
+  final fn = lib
+      .lookupFunction<_AdaptCaddyfileC, _AdaptCaddyfileDart>('AdaptCaddyfile');
+  final ptr = caddyfileText.toNativeUtf8();
+  try {
+    final res = fn(ptr);
+    final s = res.toDartString();
+    calloc.free(res);
+    return s;
+  } finally {
+    calloc.free(ptr);
+  }
+}
+
+class CaddyFfi {
+  CaddyFfi() {
+    // Load the library on the main isolate to trigger Go runtime init.
+    // This must complete before any compute() call uses the library.
+    DynamicLibrary.open(_resolvedLibPath);
   }
 
-  String stop() {
-    final resultPtr = _stopCaddy();
-    final result = resultPtr.toDartString();
-    calloc.free(resultPtr);
-    return result;
-  }
+  Future<String> start(String configJSON) => compute(_doStart, configJSON);
 
-  String reload(String configJSON) {
-    final configPtr = configJSON.toNativeUtf8();
-    try {
-      final resultPtr = _reloadCaddy(configPtr);
-      final result = resultPtr.toDartString();
-      calloc.free(resultPtr);
-      return result;
-    } finally {
-      calloc.free(configPtr);
-    }
-  }
+  Future<String> stop() => compute(_doStop, null);
 
-  String status() {
-    final resultPtr = _getCaddyStatus();
-    final result = resultPtr.toDartString();
-    calloc.free(resultPtr);
-    return result;
-  }
+  Future<String> reload(String configJSON) => compute(_doReload, configJSON);
 
-  String setEnvironment(String envJSON) {
-    final envPtr = envJSON.toNativeUtf8();
-    try {
-      final resultPtr = _setEnvironment(envPtr);
-      final result = resultPtr.toDartString();
-      calloc.free(resultPtr);
-      return result;
-    } finally {
-      calloc.free(envPtr);
-    }
-  }
+  Future<String> status() => compute(_doStatus, null);
+
+  Future<String> setEnvironment(String envJSON) =>
+      compute(_doSetEnvironment, envJSON);
+
+  Future<String> adaptCaddyfile(String caddyfileText) =>
+      compute(_doAdaptCaddyfile, caddyfileText);
 }

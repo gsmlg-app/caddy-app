@@ -20,43 +20,31 @@ class CaddyConfigScreen extends StatefulWidget {
   State<CaddyConfigScreen> createState() => _CaddyConfigScreenState();
 }
 
-class _CaddyConfigScreenState extends State<CaddyConfigScreen>
-    with SingleTickerProviderStateMixin {
-  late final TabController _tabController;
-  late final TextEditingController _listenController;
-  late final TextEditingController _rawJsonController;
+class _CaddyConfigScreenState extends State<CaddyConfigScreen> {
+  late final TextEditingController _textController;
+  late ConfigFormat _format;
 
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 2, vsync: this);
     final config = context.read<CaddyBloc>().state.config;
-    _listenController = TextEditingController(text: config.listenAddress);
-    _rawJsonController = TextEditingController(
-      text: config.rawJson ?? config.toJsonString(),
-    );
+    _textController = TextEditingController(text: config.text);
+    _format = config.format;
   }
 
   @override
   void dispose() {
-    _tabController.dispose();
-    _listenController.dispose();
-    _rawJsonController.dispose();
+    _textController.dispose();
     super.dispose();
   }
 
-  CaddyConfig _buildConfig() {
-    final bloc = context.read<CaddyBloc>();
-    if (_tabController.index == 0) {
-      return CaddyConfig(
-        listenAddress: _listenController.text,
-        routes: bloc.state.config.routes,
-        tls: bloc.state.config.tls,
-        storage: bloc.state.config.storage,
-      );
-    } else {
-      return CaddyConfig(rawJson: _rawJsonController.text);
-    }
+  CaddyTextConfig _buildConfig() {
+    return CaddyTextConfig(text: _textController.text, format: _format);
+  }
+
+  void _syncFromBloc(CaddyTextConfig config) {
+    _textController.text = config.text;
+    setState(() => _format = config.format);
   }
 
   void _validateConfig() {
@@ -125,15 +113,11 @@ class _CaddyConfigScreenState extends State<CaddyConfigScreen>
 
   void _showDiffDialog(
     BuildContext context,
-    CaddyConfig currentConfig,
-    CaddyConfig newConfig,
+    CaddyTextConfig currentConfig,
+    CaddyTextConfig newConfig,
   ) {
-    final currentJson = const JsonEncoder.withIndent(
-      '  ',
-    ).convert(currentConfig.toJson());
-    final newJson = const JsonEncoder.withIndent(
-      '  ',
-    ).convert(newConfig.toJson());
+    final currentText = currentConfig.text;
+    final newText = newConfig.text;
 
     showDialog(
       context: context,
@@ -143,7 +127,7 @@ class _CaddyConfigScreenState extends State<CaddyConfigScreen>
           content: SizedBox(
             width: double.maxFinite,
             height: 400,
-            child: currentJson == newJson
+            child: currentText == newText
                 ? Center(
                     child: Text(
                       dialogContext.l10n.caddyConfigDiffNoChanges,
@@ -151,8 +135,8 @@ class _CaddyConfigScreenState extends State<CaddyConfigScreen>
                     ),
                   )
                 : _ConfigDiffView(
-                    currentJson: currentJson,
-                    newJson: newJson,
+                    currentText: currentText,
+                    newText: newText,
                     currentLabel: dialogContext.l10n.caddyConfigDiffCurrent,
                     newLabel: dialogContext.l10n.caddyConfigDiffNew,
                   ),
@@ -162,7 +146,7 @@ class _CaddyConfigScreenState extends State<CaddyConfigScreen>
               onPressed: () => Navigator.of(dialogContext).pop(),
               child: Text(dialogContext.l10n.cancel),
             ),
-            if (currentJson != newJson)
+            if (currentText != newText)
               FilledButton.icon(
                 onPressed: () {
                   Navigator.of(dialogContext).pop();
@@ -181,9 +165,8 @@ class _CaddyConfigScreenState extends State<CaddyConfigScreen>
     );
   }
 
-  void _loadPreset(CaddyConfig preset) {
-    _listenController.text = preset.listenAddress;
-    _rawJsonController.text = preset.rawJson ?? preset.toJsonString();
+  void _loadPreset(CaddyTextConfig preset) {
+    _syncFromBloc(preset);
     context.read<CaddyBloc>().add(CaddyUpdateConfig(preset));
     ScaffoldMessenger.of(
       context,
@@ -191,17 +174,13 @@ class _CaddyConfigScreenState extends State<CaddyConfigScreen>
   }
 
   void _copyConfig() {
-    final config = _buildConfig();
-    final jsonStr = const JsonEncoder.withIndent('  ').convert(config.toJson());
-    Clipboard.setData(ClipboardData(text: jsonStr));
+    Clipboard.setData(ClipboardData(text: _textController.text));
     ScaffoldMessenger.of(
       context,
     ).showSnackBar(SnackBar(content: Text(context.l10n.caddyConfigCopied)));
   }
 
   Future<void> _exportConfig() async {
-    final config = _buildConfig();
-    final jsonStr = const JsonEncoder.withIndent('  ').convert(config.toJson());
     try {
       final dir = await getApplicationDocumentsDirectory();
       final timestamp = DateTime.now()
@@ -209,8 +188,9 @@ class _CaddyConfigScreenState extends State<CaddyConfigScreen>
           .replaceAll(':', '-')
           .split('.')
           .first;
-      final file = File('${dir.path}/caddy-config-$timestamp.json');
-      await file.writeAsString(jsonStr);
+      final ext = _format == ConfigFormat.caddyfile ? 'Caddyfile' : 'json';
+      final file = File('${dir.path}/caddy-config-$timestamp.$ext');
+      await file.writeAsString(_textController.text);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text(context.l10n.caddyConfigExported(file.path))),
@@ -241,30 +221,23 @@ class _CaddyConfigScreenState extends State<CaddyConfigScreen>
       }
       return;
     }
+
+    // Detect format: if it parses as JSON, treat as JSON; otherwise Caddyfile
+    ConfigFormat detectedFormat;
     try {
-      final json = jsonDecode(text) as Map<String, dynamic>;
-      final config = CaddyConfig(rawJson: jsonEncode(json));
-      if (!mounted) return;
-      _listenController.text = config.listenAddress;
-      _rawJsonController.text = const JsonEncoder.withIndent(
-        '  ',
-      ).convert(json);
-      context.read<CaddyBloc>().add(CaddyUpdateConfig(config));
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text(context.l10n.caddyConfigImported)));
+      jsonDecode(text);
+      detectedFormat = ConfigFormat.json;
     } on FormatException {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              context.l10n.caddyConfigImportFailed('Not valid JSON'),
-            ),
-            backgroundColor: Theme.of(context).colorScheme.error,
-          ),
-        );
-      }
+      detectedFormat = ConfigFormat.caddyfile;
     }
+
+    final config = CaddyTextConfig(text: text, format: detectedFormat);
+    if (!mounted) return;
+    _syncFromBloc(config);
+    context.read<CaddyBloc>().add(CaddyUpdateConfig(config));
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text(context.l10n.caddyConfigImported)));
   }
 
   void _showSaveAsDialog() {
@@ -306,124 +279,159 @@ class _CaddyConfigScreenState extends State<CaddyConfigScreen>
     );
   }
 
+  Future<void> _switchFormat(ConfigFormat newFormat) async {
+    if (newFormat == _format) return;
+
+    if (_format == ConfigFormat.caddyfile && newFormat == ConfigFormat.json) {
+      // Convert Caddyfile → JSON via Go bridge
+      final service = CaddyService.instance;
+      final result = await service.adaptCaddyfile(_textController.text);
+
+      // Check for adapter error
+      try {
+        final parsed = jsonDecode(result) as Map<String, dynamic>;
+        if (parsed.containsKey('error')) {
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text('Adapt error: ${parsed['error']}'),
+                backgroundColor: Theme.of(context).colorScheme.error,
+              ),
+            );
+          }
+          return;
+        }
+        // Format the JSON nicely
+        _textController.text = const JsonEncoder.withIndent(
+          '  ',
+        ).convert(parsed);
+      } on FormatException {
+        // Result is raw JSON, use as-is
+        _textController.text = result;
+      }
+
+      setState(() => _format = newFormat);
+    } else if (_format == ConfigFormat.json &&
+        newFormat == ConfigFormat.caddyfile) {
+      // JSON → Caddyfile is not supported by Caddy
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text(
+              'Converting JSON to Caddyfile is not supported. '
+              'Please rewrite the config in Caddyfile format manually.',
+            ),
+          ),
+        );
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return BlocListener<CaddyBloc, CaddyState>(
       listenWhen: (prev, curr) =>
           prev.activeConfigName != curr.activeConfigName,
       listener: (context, state) {
-        _listenController.text = state.config.listenAddress;
-        _rawJsonController.text =
-            state.config.rawJson ?? state.config.toJsonString();
+        if (state.activeConfigName != null) {
+          _syncFromBloc(state.config);
+        }
       },
       child: Scaffold(
         appBar: AppBar(
-          title: Text(context.l10n.caddyConfig),
-          bottom: TabBar(
-            controller: _tabController,
-            tabs: [
-              Tab(text: context.l10n.caddyConfigSimple),
-              Tab(text: context.l10n.caddyConfigRaw),
-            ],
-          ),
+          title: const Text('Config'),
           actions: [
-            PopupMenuButton<String>(
-              icon: const Icon(Icons.snippet_folder),
-              tooltip: context.l10n.caddyConfigPresets,
-              onSelected: (value) {
-                final preset = switch (value) {
-                  'static' => CaddyConfigPresets.staticFileServer(),
-                  'proxy' => CaddyConfigPresets.reverseProxy(),
-                  'spa' => CaddyConfigPresets.spaServer(),
-                  'api' => CaddyConfigPresets.apiGateway(),
-                  'https' => CaddyConfigPresets.httpsWithDns(),
-                  's3' => CaddyConfigPresets.httpsWithS3(),
-                  _ => null,
-                };
-                if (preset != null) _loadPreset(preset);
+            // Format toggle
+            SegmentedButton<ConfigFormat>(
+              segments: const [
+                ButtonSegment(
+                  value: ConfigFormat.caddyfile,
+                  label: Text('Caddyfile'),
+                ),
+                ButtonSegment(
+                  value: ConfigFormat.json,
+                  label: Text('JSON'),
+                ),
+              ],
+              selected: {_format},
+              onSelectionChanged: (selected) {
+                _switchFormat(selected.first);
               },
+            ),
+            const SizedBox(width: 8),
+            // Presets
+            PopupMenuButton<CaddyTextConfig>(
+              icon: const Icon(Icons.auto_awesome),
+              tooltip: context.l10n.caddyConfigPresets,
+              onSelected: _loadPreset,
               itemBuilder: (context) => [
                 PopupMenuItem(
-                  value: 'static',
-                  child: ListTile(
-                    leading: const Icon(Icons.folder),
-                    title: Text(context.l10n.caddyPresetStaticFile),
-                    contentPadding: EdgeInsets.zero,
-                  ),
+                  value: CaddyConfigPresets.staticFileServer(),
+                  child: Text(context.l10n.caddyPresetStaticFile),
                 ),
                 PopupMenuItem(
-                  value: 'proxy',
-                  child: ListTile(
-                    leading: const Icon(Icons.swap_horiz),
-                    title: Text(context.l10n.caddyPresetReverseProxy),
-                    contentPadding: EdgeInsets.zero,
-                  ),
+                  value: CaddyConfigPresets.reverseProxy(),
+                  child: Text(context.l10n.caddyPresetReverseProxy),
                 ),
                 PopupMenuItem(
-                  value: 'spa',
-                  child: ListTile(
-                    leading: const Icon(Icons.web),
-                    title: Text(context.l10n.caddyPresetSpa),
-                    contentPadding: EdgeInsets.zero,
-                  ),
+                  value: CaddyConfigPresets.spaServer(),
+                  child: Text(context.l10n.caddyPresetSpa),
                 ),
                 PopupMenuItem(
-                  value: 'api',
-                  child: ListTile(
-                    leading: const Icon(Icons.api),
-                    title: Text(context.l10n.caddyPresetApiGateway),
-                    contentPadding: EdgeInsets.zero,
-                  ),
+                  value: CaddyConfigPresets.apiGateway(),
+                  child: Text(context.l10n.caddyPresetApiGateway),
                 ),
                 PopupMenuItem(
-                  value: 'https',
-                  child: ListTile(
-                    leading: const Icon(Icons.lock),
-                    title: Text(context.l10n.caddyTlsSettings),
-                    contentPadding: EdgeInsets.zero,
-                  ),
+                  value: CaddyConfigPresets.httpsWithDns(),
+                  child: Text(context.l10n.caddyPresetHttpsDns),
                 ),
                 PopupMenuItem(
-                  value: 's3',
-                  child: ListTile(
-                    leading: const Icon(Icons.cloud),
-                    title: Text(context.l10n.caddyPresetS3Full),
-                    contentPadding: EdgeInsets.zero,
-                  ),
+                  value: CaddyConfigPresets.httpsWithS3(),
+                  child: Text(context.l10n.caddyPresetS3Full),
                 ),
               ],
             ),
-            TextButton(
+            // Validate
+            IconButton(
+              icon: const Icon(Icons.check_circle_outline),
+              tooltip: context.l10n.caddyValidate,
               onPressed: _validateConfig,
-              child: Text(context.l10n.caddyValidate),
             ),
-            TextButton(
+            // Save
+            IconButton(
+              icon: const Icon(Icons.save),
+              tooltip: context.l10n.caddySave,
               onPressed: _saveConfig,
-              child: Text(context.l10n.caddySave),
             ),
+            // Save As
             IconButton(
               icon: const Icon(Icons.save_as),
               tooltip: context.l10n.caddySaveConfigAs,
               onPressed: _showSaveAsDialog,
             ),
+            // Copy
             IconButton(
               icon: const Icon(Icons.copy),
               tooltip: context.l10n.caddyConfigCopy,
               onPressed: _copyConfig,
             ),
+            // Export
             IconButton(
               icon: const Icon(Icons.file_download),
               tooltip: context.l10n.caddyConfigExport,
               onPressed: _exportConfig,
             ),
+            // Import
             IconButton(
               icon: const Icon(Icons.file_upload),
               tooltip: context.l10n.caddyConfigImport,
               onPressed: _importConfig,
             ),
+            // Saved configs
             BlocBuilder<CaddyBloc, CaddyState>(
               buildWhen: (prev, curr) =>
-                  prev.savedConfigNames != curr.savedConfigNames,
+                  prev.savedConfigNames != curr.savedConfigNames ||
+                  prev.activeConfigName != curr.activeConfigName,
               builder: (context, state) {
                 if (state.savedConfigNames.isEmpty) {
                   return const SizedBox.shrink();
@@ -431,837 +439,167 @@ class _CaddyConfigScreenState extends State<CaddyConfigScreen>
                 return PopupMenuButton<String>(
                   icon: const Icon(Icons.bookmark),
                   tooltip: context.l10n.caddySavedConfigs,
+                  itemBuilder: (context) {
+                    return state.savedConfigNames.map((name) {
+                      return PopupMenuItem(
+                        value: name,
+                        child: Row(
+                          children: [
+                            if (name == state.activeConfigName)
+                              const Icon(Icons.check, size: 18),
+                            if (name == state.activeConfigName)
+                              const SizedBox(width: 8),
+                            Expanded(child: Text(name)),
+                            IconButton(
+                              icon: const Icon(Icons.delete, size: 18),
+                              onPressed: () {
+                                Navigator.of(context).pop();
+                                context
+                                    .read<CaddyBloc>()
+                                    .add(CaddyDeleteSavedConfig(name));
+                              },
+                            ),
+                          ],
+                        ),
+                      );
+                    }).toList();
+                  },
                   onSelected: (name) {
                     context.read<CaddyBloc>().add(CaddyLoadNamedConfig(name));
                   },
-                  itemBuilder: (context) => state.savedConfigNames
-                      .map(
-                        (name) => PopupMenuItem(
-                          value: name,
-                          child: ListTile(
-                            leading: Icon(
-                              name == state.activeConfigName
-                                  ? Icons.bookmark
-                                  : Icons.bookmark_border,
-                            ),
-                            title: Text(name),
-                            contentPadding: EdgeInsets.zero,
-                            trailing: IconButton(
-                              icon: const Icon(Icons.delete_outline, size: 20),
-                              onPressed: () {
-                                context.read<CaddyBloc>().add(
-                                  CaddyDeleteSavedConfig(name),
-                                );
-                                Navigator.of(context).pop();
-                              },
-                            ),
-                          ),
-                        ),
-                      )
-                      .toList(),
                 );
               },
             ),
-            TextButton(
+            // Apply
+            IconButton(
+              icon: const Icon(Icons.play_arrow),
+              tooltip: context.l10n.caddyApply,
               onPressed: _applyConfig,
-              child: Text(context.l10n.caddyApply),
             ),
+            const SizedBox(width: 8),
           ],
         ),
-        body: TabBarView(
-          controller: _tabController,
-          children: [
-            _SimpleConfigForm(listenController: _listenController),
-            _RawJsonEditor(controller: _rawJsonController),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _SimpleConfigForm extends StatelessWidget {
-  const _SimpleConfigForm({required this.listenController});
-
-  final TextEditingController listenController;
-
-  @override
-  Widget build(BuildContext context) {
-    return BlocBuilder<CaddyBloc, CaddyState>(
-      builder: (context, state) {
-        return ListView(
+        body: Padding(
           padding: const EdgeInsets.all(16),
-          children: [
-            TextField(
-              controller: listenController,
-              decoration: InputDecoration(
-                labelText: context.l10n.caddyListenAddress(''),
-                hintText: 'localhost:2015',
-                border: const OutlineInputBorder(),
-              ),
+          child: TextField(
+            controller: _textController,
+            maxLines: null,
+            expands: true,
+            textAlignVertical: TextAlignVertical.top,
+            style: const TextStyle(
+              fontFamily: 'monospace',
+              fontSize: 14,
             ),
-            const SizedBox(height: 16),
-            Row(
-              children: [
-                Expanded(
-                  child: Text(
-                    context.l10n.caddyRouteSectionTitle(
-                      state.config.routes.length,
-                    ),
-                    style: Theme.of(context).textTheme.titleSmall,
-                  ),
-                ),
-                IconButton(
-                  icon: const Icon(Icons.add),
-                  tooltip: context.l10n.caddyAddRoute,
-                  onPressed: () => _showRouteDialog(context),
-                ),
-              ],
+            decoration: InputDecoration(
+              border: const OutlineInputBorder(),
+              hintText: _format == ConfigFormat.caddyfile
+                  ? ':8080\n\nreverse_proxy localhost:3000'
+                  : '{"apps": {"http": {"servers": {}}}}',
+              alignLabelWithHint: true,
             ),
-            const SizedBox(height: 8),
-            if (state.config.routes.isEmpty)
-              Card(
-                child: Padding(
-                  padding: const EdgeInsets.all(16),
-                  child: Text(context.l10n.caddyNoRoutesConfigured),
-                ),
-              ),
-            if (state.config.routes.isNotEmpty)
-              ReorderableListView.builder(
-                shrinkWrap: true,
-                physics: const NeverScrollableScrollPhysics(),
-                itemCount: state.config.routes.length,
-                onReorder: (oldIndex, newIndex) {
-                  if (newIndex > oldIndex) newIndex--;
-                  final routes = [...state.config.routes];
-                  final route = routes.removeAt(oldIndex);
-                  routes.insert(newIndex, route);
-                  context.read<CaddyBloc>().add(
-                    CaddyUpdateConfig(state.config.copyWith(routes: routes)),
-                  );
-                },
-                itemBuilder: (_, index) {
-                  final route = state.config.routes[index];
-                  return Card(
-                    key: ValueKey('route_$index'),
-                    child: ListTile(
-                      leading: ReorderableDragStartListener(
-                        index: index,
-                        child: const Icon(Icons.drag_handle),
-                      ),
-                      title: Text(route.path),
-                      subtitle: Text(switch (route.handler) {
-                        StaticFileHandler(root: final root) =>
-                          context.l10n.caddyStaticFilesSubtitle(root),
-                        ReverseProxyHandler(upstreams: final upstreams) =>
-                          context.l10n.caddyReverseProxySubtitle(
-                            upstreams.join(', '),
-                          ),
-                      }),
-                      onTap: () => _showRouteDialog(
-                        context,
-                        editIndex: index,
-                        existingRoute: route,
-                      ),
-                      trailing: IconButton(
-                        icon: const Icon(Icons.delete_outline),
-                        onPressed: () {
-                          final routes = [...state.config.routes]
-                            ..removeAt(index);
-                          context.read<CaddyBloc>().add(
-                            CaddyUpdateConfig(
-                              state.config.copyWith(routes: routes),
-                            ),
-                          );
-                        },
-                      ),
-                    ),
-                  );
-                },
-              ),
-            const SizedBox(height: 24),
-            _TlsSection(config: state.config),
-            const SizedBox(height: 24),
-            _S3StorageSection(config: state.config),
-          ],
-        );
-      },
-    );
-  }
-
-  void _showRouteDialog(
-    BuildContext parentContext, {
-    int? editIndex,
-    CaddyRoute? existingRoute,
-  }) {
-    final isEditing = editIndex != null && existingRoute != null;
-    final isStaticInitially =
-        existingRoute == null || existingRoute.handler is StaticFileHandler;
-    final initialValue = switch (existingRoute?.handler) {
-      StaticFileHandler(root: final root) => root,
-      ReverseProxyHandler(upstreams: final upstreams) => upstreams.join(', '),
-      null => '',
-    };
-
-    final pathController = TextEditingController(
-      text: existingRoute?.path ?? '/*',
-    );
-    final valueController = TextEditingController(text: initialValue);
-    var isStaticFile = isStaticInitially;
-
-    showDialog(
-      context: parentContext,
-      builder: (dialogContext) {
-        return StatefulBuilder(
-          builder: (_, setDialogState) {
-            return AlertDialog(
-              title: Text(
-                isEditing
-                    ? dialogContext.l10n.caddyEditRoute
-                    : dialogContext.l10n.caddyAddRoute,
-              ),
-              content: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  TextField(
-                    controller: pathController,
-                    decoration: InputDecoration(
-                      labelText: dialogContext.l10n.caddyRoutePath,
-                      border: const OutlineInputBorder(),
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-                  SegmentedButton<bool>(
-                    segments: [
-                      ButtonSegment(
-                        value: true,
-                        label: Text(dialogContext.l10n.caddyStaticFiles),
-                        icon: const Icon(Icons.folder),
-                      ),
-                      ButtonSegment(
-                        value: false,
-                        label: Text(dialogContext.l10n.caddyReverseProxy),
-                        icon: const Icon(Icons.swap_horiz),
-                      ),
-                    ],
-                    selected: {isStaticFile},
-                    onSelectionChanged: (v) {
-                      setDialogState(() => isStaticFile = v.first);
-                    },
-                  ),
-                  const SizedBox(height: 12),
-                  TextField(
-                    controller: valueController,
-                    decoration: InputDecoration(
-                      labelText: isStaticFile
-                          ? dialogContext.l10n.caddyFileRoot
-                          : dialogContext.l10n.caddyUpstreamAddress,
-                      hintText: isStaticFile
-                          ? '/var/www/html'
-                          : 'localhost:3000',
-                      border: const OutlineInputBorder(),
-                    ),
-                  ),
-                ],
-              ),
-              actions: [
-                TextButton(
-                  onPressed: () => Navigator.of(dialogContext).pop(),
-                  child: Text(dialogContext.l10n.cancel),
-                ),
-                FilledButton(
-                  onPressed: () {
-                    final bloc = parentContext.read<CaddyBloc>();
-                    final handler = isStaticFile
-                        ? StaticFileHandler(root: valueController.text)
-                        : ReverseProxyHandler(upstreams: [valueController.text])
-                              as CaddyHandler;
-                    final route = CaddyRoute(
-                      path: pathController.text,
-                      handler: handler,
-                    );
-                    final routes = [...bloc.state.config.routes];
-                    if (isEditing) {
-                      routes[editIndex] = route;
-                    } else {
-                      routes.add(route);
-                    }
-                    bloc.add(
-                      CaddyUpdateConfig(
-                        bloc.state.config.copyWith(routes: routes),
-                      ),
-                    );
-                    Navigator.of(dialogContext).pop();
-                  },
-                  child: Text(dialogContext.l10n.ok),
-                ),
-              ],
-            );
-          },
-        );
-      },
-    );
-  }
-}
-
-class _RawJsonEditor extends StatefulWidget {
-  const _RawJsonEditor({required this.controller});
-
-  final TextEditingController controller;
-
-  @override
-  State<_RawJsonEditor> createState() => _RawJsonEditorState();
-}
-
-class _RawJsonEditorState extends State<_RawJsonEditor> {
-  late final _JsonHighlightController _highlightController;
-
-  @override
-  void initState() {
-    super.initState();
-    _highlightController = _JsonHighlightController(widget.controller.text);
-    // Sync changes back to the parent controller.
-    _highlightController.addListener(() {
-      if (widget.controller.text != _highlightController.text) {
-        widget.controller.text = _highlightController.text;
-      }
-    });
-    widget.controller.addListener(_syncFromParent);
-  }
-
-  void _syncFromParent() {
-    if (_highlightController.text != widget.controller.text) {
-      _highlightController.text = widget.controller.text;
-    }
-  }
-
-  @override
-  void dispose() {
-    widget.controller.removeListener(_syncFromParent);
-    _highlightController.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.all(16),
-      child: TextField(
-        controller: _highlightController,
-        maxLines: null,
-        expands: true,
-        style: const TextStyle(fontFamily: 'monospace', fontSize: 13),
-        decoration: const InputDecoration(
-          border: OutlineInputBorder(),
-          alignLabelWithHint: true,
-        ),
-      ),
-    );
-  }
-}
-
-class _JsonHighlightController extends TextEditingController {
-  _JsonHighlightController(String text) : super(text: text);
-
-  static final _patterns = <_JsonPattern>[
-    // Strings (keys and values)
-    _JsonPattern(RegExp(r'"(?:[^"\\]|\\.)*"(?=\s*:)'), _TokenType.key),
-    _JsonPattern(RegExp(r'"(?:[^"\\]|\\.)*"'), _TokenType.string),
-    // Numbers
-    _JsonPattern(
-      RegExp(r'-?\b\d+(?:\.\d+)?(?:[eE][+-]?\d+)?\b'),
-      _TokenType.number,
-    ),
-    // Booleans and null
-    _JsonPattern(RegExp(r'\b(?:true|false|null)\b'), _TokenType.keyword),
-    // Braces and brackets
-    _JsonPattern(RegExp(r'[{}[\]]'), _TokenType.punctuation),
-  ];
-
-  @override
-  TextSpan buildTextSpan({
-    required BuildContext context,
-    TextStyle? style,
-    required bool withComposing,
-  }) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final colors = _JsonColors.from(isDark);
-    final src = text;
-    final spans = <TextSpan>[];
-    var pos = 0;
-
-    // Collect all matches sorted by position.
-    final matches = <_Match>[];
-    for (final pattern in _patterns) {
-      for (final m in pattern.regex.allMatches(src)) {
-        matches.add(_Match(m.start, m.end, pattern.type));
-      }
-    }
-    matches.sort((a, b) => a.start.compareTo(b.start));
-
-    for (final m in matches) {
-      if (m.start < pos) continue; // Skip overlapping matches.
-      if (m.start > pos) {
-        spans.add(TextSpan(text: src.substring(pos, m.start)));
-      }
-      spans.add(
-        TextSpan(
-          text: src.substring(m.start, m.end),
-          style: TextStyle(color: colors.colorFor(m.type)),
-        ),
-      );
-      pos = m.end;
-    }
-    if (pos < src.length) {
-      spans.add(TextSpan(text: src.substring(pos)));
-    }
-
-    return TextSpan(style: style, children: spans);
-  }
-}
-
-enum _TokenType { key, string, number, keyword, punctuation }
-
-class _JsonPattern {
-  const _JsonPattern(this.regex, this.type);
-  final RegExp regex;
-  final _TokenType type;
-}
-
-class _Match {
-  const _Match(this.start, this.end, this.type);
-  final int start;
-  final int end;
-  final _TokenType type;
-}
-
-class _JsonColors {
-  const _JsonColors({
-    required this.key,
-    required this.string,
-    required this.number,
-    required this.keyword,
-    required this.punctuation,
-  });
-
-  factory _JsonColors.from(bool isDark) {
-    if (isDark) {
-      return const _JsonColors(
-        key: Color(0xFF9CDCFE),
-        string: Color(0xFFCE9178),
-        number: Color(0xFFB5CEA8),
-        keyword: Color(0xFF569CD6),
-        punctuation: Color(0xFFD4D4D4),
-      );
-    }
-    return const _JsonColors(
-      key: Color(0xFF0451A5),
-      string: Color(0xFFA31515),
-      number: Color(0xFF098658),
-      keyword: Color(0xFF0000FF),
-      punctuation: Color(0xFF000000),
-    );
-  }
-
-  final Color key;
-  final Color string;
-  final Color number;
-  final Color keyword;
-  final Color punctuation;
-
-  Color colorFor(_TokenType type) => switch (type) {
-    _TokenType.key => key,
-    _TokenType.string => string,
-    _TokenType.number => number,
-    _TokenType.keyword => keyword,
-    _TokenType.punctuation => punctuation,
-  };
-}
-
-class _TlsSection extends StatelessWidget {
-  const _TlsSection({required this.config});
-
-  final CaddyConfig config;
-
-  @override
-  Widget build(BuildContext context) {
-    final tls = config.tls;
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          context.l10n.caddyTlsSettings,
-          style: Theme.of(context).textTheme.titleSmall,
-        ),
-        const SizedBox(height: 8),
-        Card(
-          child: Column(
-            children: [
-              SwitchListTile(
-                title: Text(context.l10n.caddyTlsEnabled),
-                secondary: Icon(
-                  Icons.lock,
-                  color: tls.enabled
-                      ? Theme.of(context).colorScheme.primary
-                      : null,
-                ),
-                value: tls.enabled,
-                onChanged: (value) {
-                  context.read<CaddyBloc>().add(
-                    CaddyUpdateConfig(
-                      config.copyWith(tls: tls.copyWith(enabled: value)),
-                    ),
-                  );
-                },
-              ),
-              if (tls.enabled) ...[
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 16),
-                  child: TextField(
-                    decoration: InputDecoration(
-                      labelText: context.l10n.caddyTlsDomain,
-                      hintText: 'example.com',
-                      border: const OutlineInputBorder(),
-                    ),
-                    controller: TextEditingController(text: tls.domain),
-                    onChanged: (value) {
-                      context.read<CaddyBloc>().add(
-                        CaddyUpdateConfig(
-                          config.copyWith(tls: tls.copyWith(domain: value)),
-                        ),
-                      );
-                    },
-                  ),
-                ),
-                const SizedBox(height: 12),
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 16),
-                  child: DropdownButtonFormField<DnsProvider>(
-                    initialValue: tls.dnsProvider,
-                    decoration: InputDecoration(
-                      labelText: context.l10n.caddyDnsProvider,
-                      border: const OutlineInputBorder(),
-                    ),
-                    items: [
-                      DropdownMenuItem(
-                        value: DnsProvider.none,
-                        child: Text(context.l10n.caddyDnsProviderNone),
-                      ),
-                      DropdownMenuItem(
-                        value: DnsProvider.cloudflare,
-                        child: Text(context.l10n.caddyDnsProviderCloudflare),
-                      ),
-                      DropdownMenuItem(
-                        value: DnsProvider.route53,
-                        child: Text(context.l10n.caddyDnsProviderRoute53),
-                      ),
-                      DropdownMenuItem(
-                        value: DnsProvider.duckdns,
-                        child: Text(context.l10n.caddyDnsProviderDuckdns),
-                      ),
-                    ],
-                    onChanged: (value) {
-                      if (value == null) return;
-                      context.read<CaddyBloc>().add(
-                        CaddyUpdateConfig(
-                          config.copyWith(
-                            tls: tls.copyWith(dnsProvider: value),
-                          ),
-                        ),
-                      );
-                    },
-                  ),
-                ),
-                const SizedBox(height: 16),
-              ],
-            ],
           ),
         ),
-      ],
+      ),
     );
   }
 }
 
+/// Side-by-side diff view comparing two config texts.
 class _ConfigDiffView extends StatelessWidget {
   const _ConfigDiffView({
-    required this.currentJson,
-    required this.newJson,
+    required this.currentText,
+    required this.newText,
     required this.currentLabel,
     required this.newLabel,
   });
 
-  final String currentJson;
-  final String newJson;
+  final String currentText;
+  final String newText;
   final String currentLabel;
   final String newLabel;
 
   @override
   Widget build(BuildContext context) {
-    final currentLines = currentJson.split('\n');
-    final newLines = newJson.split('\n');
-    final diffLines = _computeDiff(currentLines, newLines);
+    final currentLines = currentText.split('\n');
+    final newLines = newText.split('\n');
+    final maxLines =
+        currentLines.length > newLines.length
+            ? currentLines.length
+            : newLines.length;
 
     return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Row(
           children: [
-            _DiffLegendChip(
-              color: Colors.red.withValues(alpha: 0.15),
-              label: '- $currentLabel',
+            Expanded(
+              child: Text(
+                currentLabel,
+                style: Theme.of(context).textTheme.titleSmall,
+                textAlign: TextAlign.center,
+              ),
             ),
-            const SizedBox(width: 12),
-            _DiffLegendChip(
-              color: Colors.green.withValues(alpha: 0.15),
-              label: '+ $newLabel',
+            Expanded(
+              child: Text(
+                newLabel,
+                style: Theme.of(context).textTheme.titleSmall,
+                textAlign: TextAlign.center,
+              ),
             ),
           ],
         ),
-        const SizedBox(height: 8),
+        const Divider(),
         Expanded(
-          child: Container(
-            decoration: BoxDecoration(
-              border: Border.all(
-                color: Theme.of(context).colorScheme.outlineVariant,
-              ),
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: ListView.builder(
-              itemCount: diffLines.length,
-              padding: const EdgeInsets.all(8),
-              itemBuilder: (context, index) {
-                final diff = diffLines[index];
-                final (bg, prefix) = switch (diff.type) {
-                  _DiffType.removed => (
-                    Colors.red.withValues(alpha: 0.15),
-                    '- ',
-                  ),
-                  _DiffType.added => (
-                    Colors.green.withValues(alpha: 0.15),
-                    '+ ',
-                  ),
-                  _DiffType.unchanged => (null as Color?, '  '),
-                };
-                return Container(
-                  color: bg,
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 4,
-                    vertical: 1,
-                  ),
-                  child: Text(
-                    '$prefix${diff.text}',
-                    style: TextStyle(
-                      fontFamily: 'monospace',
-                      fontSize: 12,
-                      color: diff.type == _DiffType.removed
-                          ? Colors.red.shade700
-                          : diff.type == _DiffType.added
-                          ? Colors.green.shade700
+          child: ListView.builder(
+            itemCount: maxLines,
+            itemBuilder: (context, index) {
+              final oldLine =
+                  index < currentLines.length ? currentLines[index] : '';
+              final newLine =
+                  index < newLines.length ? newLines[index] : '';
+              final changed = oldLine != newLine;
+
+              return Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Expanded(
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 2,
+                      ),
+                      color: changed
+                          ? Colors.red.withValues(alpha: 0.15)
                           : null,
-                    ),
-                  ),
-                );
-              },
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-
-  /// Simple line-based diff using longest common subsequence.
-  static List<_DiffLine> _computeDiff(
-    List<String> oldLines,
-    List<String> newLines,
-  ) {
-    // Build LCS table
-    final m = oldLines.length;
-    final n = newLines.length;
-    final lcs = List.generate(m + 1, (_) => List.filled(n + 1, 0));
-
-    for (var i = 1; i <= m; i++) {
-      for (var j = 1; j <= n; j++) {
-        if (oldLines[i - 1] == newLines[j - 1]) {
-          lcs[i][j] = lcs[i - 1][j - 1] + 1;
-        } else {
-          lcs[i][j] = lcs[i - 1][j] > lcs[i][j - 1]
-              ? lcs[i - 1][j]
-              : lcs[i][j - 1];
-        }
-      }
-    }
-
-    // Backtrack to build diff
-    final result = <_DiffLine>[];
-    var i = m;
-    var j = n;
-    while (i > 0 || j > 0) {
-      if (i > 0 && j > 0 && oldLines[i - 1] == newLines[j - 1]) {
-        result.add(_DiffLine(oldLines[i - 1], _DiffType.unchanged));
-        i--;
-        j--;
-      } else if (j > 0 && (i == 0 || lcs[i][j - 1] >= lcs[i - 1][j])) {
-        result.add(_DiffLine(newLines[j - 1], _DiffType.added));
-        j--;
-      } else {
-        result.add(_DiffLine(oldLines[i - 1], _DiffType.removed));
-        i--;
-      }
-    }
-
-    return result.reversed.toList();
-  }
-}
-
-class _DiffLegendChip extends StatelessWidget {
-  const _DiffLegendChip({required this.color, required this.label});
-
-  final Color color;
-  final String label;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-      decoration: BoxDecoration(
-        color: color,
-        borderRadius: BorderRadius.circular(4),
-      ),
-      child: Text(
-        label,
-        style: const TextStyle(fontFamily: 'monospace', fontSize: 12),
-      ),
-    );
-  }
-}
-
-enum _DiffType { removed, added, unchanged }
-
-class _DiffLine {
-  const _DiffLine(this.text, this.type);
-  final String text;
-  final _DiffType type;
-}
-
-class _S3StorageSection extends StatelessWidget {
-  const _S3StorageSection({required this.config});
-
-  final CaddyConfig config;
-
-  @override
-  Widget build(BuildContext context) {
-    final s3 = config.storage;
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          context.l10n.caddyS3Storage,
-          style: Theme.of(context).textTheme.titleSmall,
-        ),
-        const SizedBox(height: 8),
-        Card(
-          child: Column(
-            children: [
-              SwitchListTile(
-                title: Text(context.l10n.caddyS3Enabled),
-                secondary: Icon(
-                  Icons.cloud,
-                  color: s3.enabled
-                      ? Theme.of(context).colorScheme.primary
-                      : null,
-                ),
-                value: s3.enabled,
-                onChanged: (value) {
-                  context.read<CaddyBloc>().add(
-                    CaddyUpdateConfig(
-                      config.copyWith(storage: s3.copyWith(enabled: value)),
-                    ),
-                  );
-                },
-              ),
-              if (s3.enabled) ...[
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 16),
-                  child: TextField(
-                    decoration: InputDecoration(
-                      labelText: context.l10n.caddyS3Endpoint,
-                      hintText: 's3.amazonaws.com',
-                      border: const OutlineInputBorder(),
-                    ),
-                    controller: TextEditingController(text: s3.endpoint),
-                    onChanged: (value) {
-                      context.read<CaddyBloc>().add(
-                        CaddyUpdateConfig(
-                          config.copyWith(
-                            storage: s3.copyWith(endpoint: value),
-                          ),
+                      child: Text(
+                        oldLine,
+                        style: const TextStyle(
+                          fontFamily: 'monospace',
+                          fontSize: 12,
                         ),
-                      );
-                    },
-                  ),
-                ),
-                const SizedBox(height: 12),
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 16),
-                  child: TextField(
-                    decoration: InputDecoration(
-                      labelText: context.l10n.caddyS3Bucket,
-                      hintText: 'my-caddy-storage',
-                      border: const OutlineInputBorder(),
+                      ),
                     ),
-                    controller: TextEditingController(text: s3.bucket),
-                    onChanged: (value) {
-                      context.read<CaddyBloc>().add(
-                        CaddyUpdateConfig(
-                          config.copyWith(storage: s3.copyWith(bucket: value)),
-                        ),
-                      );
-                    },
                   ),
-                ),
-                const SizedBox(height: 12),
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 16),
-                  child: TextField(
-                    decoration: InputDecoration(
-                      labelText: context.l10n.caddyS3Region,
-                      hintText: 'us-east-1',
-                      border: const OutlineInputBorder(),
+                  Expanded(
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 2,
+                      ),
+                      color: changed
+                          ? Colors.green.withValues(alpha: 0.15)
+                          : null,
+                      child: Text(
+                        newLine,
+                        style: const TextStyle(
+                          fontFamily: 'monospace',
+                          fontSize: 12,
+                        ),
+                      ),
                     ),
-                    controller: TextEditingController(text: s3.region),
-                    onChanged: (value) {
-                      context.read<CaddyBloc>().add(
-                        CaddyUpdateConfig(
-                          config.copyWith(storage: s3.copyWith(region: value)),
-                        ),
-                      );
-                    },
                   ),
-                ),
-                const SizedBox(height: 12),
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 16),
-                  child: TextField(
-                    decoration: InputDecoration(
-                      labelText: context.l10n.caddyS3Prefix,
-                      hintText: 'caddy/',
-                      border: const OutlineInputBorder(),
-                    ),
-                    controller: TextEditingController(text: s3.prefix),
-                    onChanged: (value) {
-                      context.read<CaddyBloc>().add(
-                        CaddyUpdateConfig(
-                          config.copyWith(storage: s3.copyWith(prefix: value)),
-                        ),
-                      );
-                    },
-                  ),
-                ),
-                const SizedBox(height: 16),
-              ],
-            ],
+                ],
+              );
+            },
           ),
         ),
       ],

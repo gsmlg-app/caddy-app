@@ -1,11 +1,12 @@
 import 'dart:async';
 
-import 'package:duskmoon_ui/duskmoon_ui.dart';
+import 'package:app_adaptive_widgets/app_adaptive_widgets.dart';
 import 'package:app_locale/app_locale.dart';
 import 'package:caddy_bloc/caddy_bloc.dart';
 import 'package:caddy_service/caddy_service.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 
 import 'package:caddy_app/destination.dart';
@@ -21,8 +22,7 @@ class CaddyScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return DmAdaptiveScaffold(
-      internalAnimations: false,
+    return AppAdaptiveScaffold(
       selectedIndex: Destinations.indexOf(const Key(name), context),
       onSelectedIndexChange: (idx) => Destinations.changeHandler(idx, context),
       destinations: Destinations.navs(context),
@@ -113,43 +113,82 @@ void _showErrorRecoveryDialog(
   final isPortInUse =
       errorMessage.contains('already in use') || errorMessage.contains('bind:');
 
-  showDmDialog(
+  showDialog(
     context: context,
-    title: Text(context.l10n.caddyErrorRecoveryTitle),
-    content: Text(
-      isPortInUse
-          ? context.l10n.caddyErrorPortInUse
-          : context.l10n.caddyErrorGeneric,
-    ),
-    actions: [
-      DmDialogAction(
-        onPressed: (ctx) => Navigator.of(ctx).pop(),
-        child: Text(context.l10n.caddyErrorDismiss),
-      ),
-      if (isPortInUse)
-        DmDialogAction(
-          onPressed: (ctx) {
-            Navigator.of(ctx).pop();
-            context.goNamed(CaddyConfigScreen.name);
-          },
-          child: Text(context.l10n.caddyErrorChangePort),
+    builder: (dialogContext) {
+      return AlertDialog(
+        icon: Icon(
+          isPortInUse ? Icons.portable_wifi_off : Icons.error_outline,
+          color: Theme.of(dialogContext).colorScheme.error,
+          size: 48,
         ),
-      if (!isPortInUse)
-        DmDialogAction(
-          onPressed: (ctx) {
-            Navigator.of(ctx).pop();
-            context.goNamed(CaddyLogScreen.name);
-          },
-          child: Text(context.l10n.caddyErrorViewLogs),
+        title: Text(dialogContext.l10n.caddyErrorRecoveryTitle),
+        content: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                isPortInUse
+                    ? dialogContext.l10n.caddyErrorPortInUse
+                    : dialogContext.l10n.caddyErrorGeneric,
+              ),
+              const SizedBox(height: 12),
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: Theme.of(dialogContext)
+                      .colorScheme
+                      .errorContainer
+                      .withValues(alpha: 0.3),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: SelectableText(
+                  errorMessage,
+                  style: const TextStyle(
+                    fontFamily: 'monospace',
+                    fontSize: 12,
+                  ),
+                ),
+              ),
+            ],
+          ),
         ),
-      DmDialogAction(
-        onPressed: (ctx) {
-          Navigator.of(ctx).pop();
-          context.read<CaddyBloc>().add(CaddyStart(state.config));
-        },
-        child: Text(context.l10n.caddyErrorRetry),
-      ),
-    ],
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(),
+            child: Text(dialogContext.l10n.caddyErrorDismiss),
+          ),
+          if (isPortInUse)
+            OutlinedButton.icon(
+              onPressed: () {
+                Navigator.of(dialogContext).pop();
+                context.goNamed(CaddyConfigScreen.name);
+              },
+              icon: const Icon(Icons.edit),
+              label: Text(dialogContext.l10n.caddyErrorChangePort),
+            ),
+          if (!isPortInUse)
+            OutlinedButton.icon(
+              onPressed: () {
+                Navigator.of(dialogContext).pop();
+                context.goNamed(CaddyLogScreen.name);
+              },
+              icon: const Icon(Icons.article),
+              label: Text(dialogContext.l10n.caddyErrorViewLogs),
+            ),
+          FilledButton.icon(
+            onPressed: () {
+              Navigator.of(dialogContext).pop();
+              context.read<CaddyBloc>().add(CaddyStart(state.config));
+            },
+            icon: const Icon(Icons.refresh),
+            label: Text(dialogContext.l10n.caddyErrorRetry),
+          ),
+        ],
+      );
+    },
   );
 }
 
@@ -236,7 +275,7 @@ class _StatusCardState extends State<_StatusCard> {
     final semanticLabel = [
       label,
       if (state.isRunning)
-        context.l10n.caddyListenAddress(state.config.listenAddress),
+        context.l10n.caddyListenAddress(state.config.text.split('\n').firstWhere((l) => l.trim().isNotEmpty, orElse: () => 'empty')),
       if (uptime != null) context.l10n.caddyUptime(_formatDuration(uptime)),
     ].join('. ');
 
@@ -254,16 +293,23 @@ class _StatusCardState extends State<_StatusCard> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      label,
-                      style: Theme.of(
-                        context,
-                      ).textTheme.titleMedium?.copyWith(color: color),
-                    ),
+                    state.hasError
+                        ? SelectableText(
+                            label,
+                            style: Theme.of(
+                              context,
+                            ).textTheme.titleMedium?.copyWith(color: color),
+                          )
+                        : Text(
+                            label,
+                            style: Theme.of(
+                              context,
+                            ).textTheme.titleMedium?.copyWith(color: color),
+                          ),
                     if (state.isRunning)
                       Text(
                         context.l10n.caddyListenAddress(
-                          state.config.listenAddress,
+                          state.config.text.split('\n').firstWhere((l) => l.trim().isNotEmpty, orElse: () => 'empty'),
                         ),
                       ),
                     if (uptime != null)
@@ -362,7 +408,7 @@ class _MetricsCard extends StatelessWidget {
                 icon: Icons.alt_route,
                 iconColor: primary,
                 label: context.l10n.caddyActiveRoutes,
-                value: context.l10n.caddyRouteCount(state.config.routes.length),
+                value: context.l10n.caddyRouteCount(state.config.text.split('\n').where((l) => l.trim().isNotEmpty).length),
                 valueColor: primary,
               ),
               const SizedBox(height: 8),
@@ -436,8 +482,8 @@ class _ConfigSummary extends StatelessWidget {
     final isValid = validationError == null;
     final semanticLabel =
         '${context.l10n.caddyConfig}. '
-        '${context.l10n.caddyListenAddress(state.config.listenAddress)}. '
-        '${context.l10n.caddyRoutesCount(state.config.routes.length)}';
+        '${context.l10n.caddyListenAddress(state.config.text.split('\n').firstWhere((l) => l.trim().isNotEmpty, orElse: () => 'empty'))}. '
+        '${context.l10n.caddyRoutesCount(state.config.text.split('\n').where((l) => l.trim().isNotEmpty).length)}';
 
     return Semantics(
       label: semanticLabel,
@@ -471,8 +517,8 @@ class _ConfigSummary extends StatelessWidget {
                 ],
               ),
               const SizedBox(height: 8),
-              Text(context.l10n.caddyListenAddress(state.config.listenAddress)),
-              Text(context.l10n.caddyRoutesCount(state.config.routes.length)),
+              Text(context.l10n.caddyListenAddress(state.config.text.split('\n').firstWhere((l) => l.trim().isNotEmpty, orElse: () => 'empty'))),
+              Text(context.l10n.caddyRoutesCount(state.config.text.split('\n').where((l) => l.trim().isNotEmpty).length)),
             ],
           ),
         ),

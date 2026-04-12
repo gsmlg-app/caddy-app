@@ -43,7 +43,7 @@ class CaddyBloc extends Bloc<CaddyEvent, CaddyState> {
   final AppDatabase? _database;
   final VaultRepository? _vault;
   StreamSubscription<String>? _logSubscription;
-  CaddyConfig? _configBeforePause;
+  CaddyTextConfig? _configBeforePause;
 
   static const _secretPrefix = 'caddy_';
 
@@ -62,9 +62,66 @@ class CaddyBloc extends Bloc<CaddyEvent, CaddyState> {
     return env;
   }
 
+  /// Converts a [CaddyTextConfig] to Caddy JSON, handling Caddyfile
+  /// adaptation and admin config injection.
+  Future<String> _prepareConfigJson(CaddyTextConfig config) async {
+    String json;
+    if (config.format == ConfigFormat.caddyfile) {
+      final String result;
+      try {
+        result = await _service.adaptCaddyfile(config.text);
+      } catch (e) {
+        throw Exception(
+          'Failed to convert Caddyfile to JSON. '
+          'Rebuild the Go bridge: cd go/caddy_bridge && make linux\n'
+          'Detail: $e',
+        );
+      }
+      // Check if the adapter returned an error
+      if (result.contains('"error"')) {
+        try {
+          final parsed = jsonDecode(result) as Map<String, dynamic>;
+          if (parsed.containsKey('error')) {
+            throw Exception(parsed['error']);
+          }
+        } on FormatException {
+          // Not a JSON error response, treat as valid JSON output
+        }
+      }
+      json = result;
+    } else {
+      json = config.text;
+    }
+    return _injectAdmin(json, state.adminEnabled);
+  }
+
+  /// Injects or disables the admin API in a Caddy JSON config string.
+  String _injectAdmin(String configJson, bool adminEnabled) {
+    try {
+      final map = jsonDecode(configJson) as Map<String, dynamic>;
+      if (adminEnabled) {
+        map['admin'] = {'listen': 'localhost:2019'};
+      } else {
+        map['admin'] = {'disabled': true};
+      }
+      return jsonEncode(map);
+    } catch (_) {
+      // If JSON is invalid, return as-is — the error will surface at load time
+      return configJson;
+    }
+  }
+
   static const _maxLogs = 10000;
 
   Future<void> _onStart(CaddyStart event, Emitter<CaddyState> emit) async {
+    if (event.config.isEmpty) {
+      emit(
+        state.copyWith(
+          status: const CaddyError(message: 'Configuration is empty'),
+        ),
+      );
+      return;
+    }
     emit(
       state.copyWith(
         status: const CaddyLoading(),
@@ -72,13 +129,14 @@ class CaddyBloc extends Bloc<CaddyEvent, CaddyState> {
         requestCount: 0,
       ),
     );
-    final secrets = await _readSecrets();
-    final status = await _service.start(
-      event.config,
-      adminEnabled: state.adminEnabled,
-      environment: secrets,
-    );
-    emit(state.copyWith(status: status));
+    try {
+      final configJson = await _prepareConfigJson(event.config);
+      final secrets = await _readSecrets();
+      final status = await _service.start(configJson, environment: secrets);
+      emit(state.copyWith(status: status));
+    } catch (e) {
+      emit(state.copyWith(status: CaddyError(message: e.toString())));
+    }
   }
 
   Future<void> _onStop(CaddyStop event, Emitter<CaddyState> emit) async {
@@ -89,13 +147,14 @@ class CaddyBloc extends Bloc<CaddyEvent, CaddyState> {
 
   Future<void> _onReload(CaddyReload event, Emitter<CaddyState> emit) async {
     emit(state.copyWith(status: const CaddyLoading(), config: event.config));
-    final secrets = await _readSecrets();
-    final status = await _service.reload(
-      event.config,
-      adminEnabled: state.adminEnabled,
-      environment: secrets,
-    );
-    emit(state.copyWith(status: status));
+    try {
+      final configJson = await _prepareConfigJson(event.config);
+      final secrets = await _readSecrets();
+      final status = await _service.reload(configJson, environment: secrets);
+      emit(state.copyWith(status: status));
+    } catch (e) {
+      emit(state.copyWith(status: CaddyError(message: e.toString())));
+    }
   }
 
   Future<void> _onStatusCheck(
@@ -169,9 +228,14 @@ class CaddyBloc extends Bloc<CaddyEvent, CaddyState> {
     if (config != null && state.autoRestartOnResume) {
       _configBeforePause = null;
       emit(state.copyWith(status: const CaddyLoading()));
-      final secrets = await _readSecrets();
-      final status = await _service.start(config, environment: secrets);
-      emit(state.copyWith(status: status));
+      try {
+        final configJson = await _prepareConfigJson(config);
+        final secrets = await _readSecrets();
+        final status = await _service.start(configJson, environment: secrets);
+        emit(state.copyWith(status: status));
+      } catch (e) {
+        emit(state.copyWith(status: CaddyError(message: e.toString())));
+      }
     } else {
       _configBeforePause = null;
     }
@@ -189,7 +253,7 @@ class CaddyBloc extends Bloc<CaddyEvent, CaddyState> {
     final active = configs.where((c) => c.isActive).firstOrNull;
 
     if (active != null) {
-      final config = CaddyConfig.fromJson(
+      final config = CaddyTextConfig.fromJson(
         jsonDecode(active.configJson) as Map<String, dynamic>,
       );
       emit(
@@ -212,7 +276,7 @@ class CaddyBloc extends Bloc<CaddyEvent, CaddyState> {
     final db = _database;
     if (db == null) return;
 
-    final configJson = jsonEncode(state.config.toStorageJson());
+    final configJson = jsonEncode(state.config.toJson());
     await db.upsertCaddyConfig(
       name: event.name,
       configJson: configJson,
@@ -252,7 +316,7 @@ class CaddyBloc extends Bloc<CaddyEvent, CaddyState> {
     final saved = await db.getCaddyConfigByName(event.name);
     if (saved == null) return;
 
-    final config = CaddyConfig.fromJson(
+    final config = CaddyTextConfig.fromJson(
       jsonDecode(saved.configJson) as Map<String, dynamic>,
     );
     await db.setActiveCaddyConfig(event.name);
@@ -286,7 +350,7 @@ class CaddyBloc extends Bloc<CaddyEvent, CaddyState> {
       final active = configs.where((c) => c.isActive).firstOrNull;
 
       if (active != null) {
-        final config = CaddyConfig.fromJson(
+        final config = CaddyTextConfig.fromJson(
           jsonDecode(active.configJson) as Map<String, dynamic>,
         );
         emit(

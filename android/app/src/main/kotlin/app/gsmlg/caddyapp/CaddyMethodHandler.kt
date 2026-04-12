@@ -39,6 +39,10 @@ class CaddyMethodHandler(messenger: BinaryMessenger) :
                         val env = call.argument<String>("env") ?: "{}"
                         caddy_bridge.CaddyBridge.setEnvironment(env)
                     }
+                    "adaptCaddyfile" -> {
+                        val caddyfile = call.argument<String>("caddyfile") ?: ""
+                        caddy_bridge.CaddyBridge.adaptCaddyfile(caddyfile)
+                    }
                     else -> {
                         result.notImplemented()
                         return@launch

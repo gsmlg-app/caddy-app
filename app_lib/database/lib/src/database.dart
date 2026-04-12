@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:drift/drift.dart';
 import 'package:drift/native.dart';
 import 'package:drift_flutter/drift_flutter.dart';
@@ -25,7 +27,7 @@ class AppDatabase extends _$AppDatabase {
   }
 
   @override
-  int get schemaVersion => 2;
+  int get schemaVersion => 3;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -34,8 +36,94 @@ class AppDatabase extends _$AppDatabase {
       if (from < 2) {
         await m.createTable(caddyConfigs);
       }
+      if (from < 3) {
+        // Migrate stored configs from old CaddyConfig structured format
+        // to new CaddyTextConfig {text, format} format.
+        await _migrateConfigsToTextFormat();
+      }
     },
   );
+
+  /// Migrates old structured CaddyConfig JSON to new CaddyTextConfig format.
+  /// Old format had either `_rawJson` key (raw JSON mode) or structured
+  /// fields like `listenAddress`, `routes`, `tls`, `storage`.
+  /// New format is `{"text": "<config>", "format": "caddyfile|json"}`.
+  Future<void> _migrateConfigsToTextFormat() async {
+    final rows = await select(caddyConfigs).get();
+    for (final row in rows) {
+      try {
+        final old = jsonDecode(row.configJson) as Map<String, dynamic>;
+        // Already in new format
+        if (old.containsKey('text') && old.containsKey('format')) continue;
+
+        String configText;
+        if (old.containsKey('_rawJson')) {
+          // Was stored as raw JSON
+          configText = old['_rawJson'] as String;
+        } else {
+          // Reconstruct Caddy JSON from structured fields
+          configText = _reconstructCaddyJson(old);
+        }
+
+        final newJson = jsonEncode({'text': configText, 'format': 'json'});
+        await (update(caddyConfigs)..where((t) => t.id.equals(row.id))).write(
+          CaddyConfigsCompanion(
+            configJson: Value(newJson),
+            updatedAt: Value(DateTime.now()),
+          ),
+        );
+      } catch (_) {
+        // Skip configs that can't be migrated
+      }
+    }
+  }
+
+  /// Reconstructs Caddy JSON from old structured CaddyConfig format.
+  /// This duplicates the essential logic of the removed CaddyConfig.toJson().
+  static String _reconstructCaddyJson(Map<String, dynamic> old) {
+    final listenAddress = old['listenAddress'] as String? ?? 'localhost:2015';
+    final port = listenAddress.split(':').last;
+    final host = listenAddress.split(':').first;
+    final routes = old['routes'] as List<dynamic>? ?? [];
+
+    final routeJson = routes.map((r) {
+      final route = r as Map<String, dynamic>;
+      final handler = route['handler'] as Map<String, dynamic>? ?? {};
+      final handlerType = handler['handler'] as String? ?? 'file_server';
+
+      final handleEntry = <String, dynamic>{'handler': handlerType};
+      if (handlerType == 'file_server') {
+        handleEntry['root'] = handler['root'] ?? '.';
+      } else if (handlerType == 'reverse_proxy') {
+        final upstreams = handler['upstreams'] as List<dynamic>? ?? [];
+        handleEntry['upstreams'] =
+            upstreams.map((u) => {'dial': u is String ? u : ''}).toList();
+      }
+
+      return {
+        'match': [
+          {
+            'host': [host],
+            'path': [route['path'] ?? '/*'],
+          },
+        ],
+        'handle': [handleEntry],
+      };
+    }).toList();
+
+    final apps = <String, dynamic>{
+      'http': {
+        'servers': {
+          'srv0': {
+            'listen': [':$port'],
+            'routes': routeJson,
+          },
+        },
+      },
+    };
+
+    return jsonEncode({'apps': apps});
+  }
 
   // --- CaddyConfigs queries ---
 

@@ -9,6 +9,7 @@ import (
 	"sync"
 
 	"github.com/caddyserver/caddy/v2"
+	"github.com/caddyserver/caddy/v2/caddyconfig"
 )
 
 var (
@@ -77,6 +78,21 @@ func GetCaddyStatus() *C.char {
 		return C.CString(string(result))
 	}
 	result, _ := json.Marshal(map[string]string{"status": "running"})
+	return C.CString(string(result))
+}
+
+//export AdaptCaddyfile
+func AdaptCaddyfile(caddyfileText *C.char) *C.char {
+	adapter := caddyconfig.GetAdapter("caddyfile")
+	if adapter == nil {
+		errJSON, _ := json.Marshal(map[string]string{"error": "caddyfile adapter not registered"})
+		return C.CString(string(errJSON))
+	}
+	result, _, err := adapter.Adapt([]byte(C.GoString(caddyfileText)), nil)
+	if err != nil {
+		errJSON, _ := json.Marshal(map[string]string{"error": err.Error()})
+		return C.CString(string(errJSON))
+	}
 	return C.CString(string(result))
 }
 

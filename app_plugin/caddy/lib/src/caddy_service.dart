@@ -2,7 +2,6 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
-import 'package:caddy_service/src/caddy_config.dart';
 import 'package:caddy_service/src/caddy_ffi.dart';
 import 'package:caddy_service/src/caddy_method_channel.dart';
 import 'package:caddy_service/src/caddy_status.dart';
@@ -50,7 +49,7 @@ class CaddyService {
 
     try {
       if (_isDesktop) {
-        return _ffi!.setEnvironment(envJson);
+        return await _ffi!.setEnvironment(envJson);
       } else {
         return await _methodChannel!.setEnvironment(envJson);
       }
@@ -59,9 +58,27 @@ class CaddyService {
     }
   }
 
+  /// Converts Caddyfile text to Caddy JSON config using the built-in adapter.
+  /// Returns the JSON string on success, or a JSON object with an "error" key.
+  Future<String> adaptCaddyfile(String caddyfileText) async {
+    _ensureInitialized();
+
+    try {
+      if (_isDesktop) {
+        return await _ffi!.adaptCaddyfile(caddyfileText);
+      } else {
+        return await _methodChannel!.adaptCaddyfile(caddyfileText);
+      }
+    } catch (e) {
+      return jsonEncode({'error': e.toString()});
+    }
+  }
+
+  /// Starts Caddy with a JSON config string.
+  /// The caller is responsible for converting Caddyfile to JSON first via
+  /// [adaptCaddyfile] and injecting admin config before calling this.
   Future<CaddyStatus> start(
-    CaddyConfig config, {
-    bool adminEnabled = false,
+    String configJson, {
     Map<String, String> environment = const {},
   }) async {
     _ensureInitialized();
@@ -72,12 +89,10 @@ class CaddyService {
       return CaddyError(message: 'Failed to set environment: $envError');
     }
 
-    final configJson = config.toJsonString(adminEnabled: adminEnabled);
-
     try {
       final String error;
       if (_isDesktop) {
-        error = _ffi!.start(configJson);
+        error = await _ffi!.start(configJson);
       } else {
         error = await _methodChannel!.start(configJson);
       }
@@ -85,8 +100,8 @@ class CaddyService {
       if (error.isNotEmpty) {
         if (error.contains('address already in use') ||
             error.contains('bind:')) {
-          return CaddyError(
-            message: 'Port ${config.listenAddress} is already in use',
+          return const CaddyError(
+            message: 'Port is already in use',
           );
         }
         return CaddyError(message: error);
@@ -104,7 +119,7 @@ class CaddyService {
     try {
       final String error;
       if (_isDesktop) {
-        error = _ffi!.stop();
+        error = await _ffi!.stop();
       } else {
         error = await _methodChannel!.stop();
       }
@@ -119,9 +134,11 @@ class CaddyService {
     }
   }
 
+  /// Reloads Caddy with a new JSON config string.
+  /// The caller is responsible for converting Caddyfile to JSON first via
+  /// [adaptCaddyfile] and injecting admin config before calling this.
   Future<CaddyStatus> reload(
-    CaddyConfig config, {
-    bool adminEnabled = false,
+    String configJson, {
     Map<String, String> environment = const {},
   }) async {
     _ensureInitialized();
@@ -132,12 +149,10 @@ class CaddyService {
       return CaddyError(message: 'Failed to set environment: $envError');
     }
 
-    final configJson = config.toJsonString(adminEnabled: adminEnabled);
-
     try {
       final String error;
       if (_isDesktop) {
-        error = _ffi!.reload(configJson);
+        error = await _ffi!.reload(configJson);
       } else {
         error = await _methodChannel!.reload(configJson);
       }
@@ -145,8 +160,8 @@ class CaddyService {
       if (error.isNotEmpty) {
         if (error.contains('address already in use') ||
             error.contains('bind:')) {
-          return CaddyError(
-            message: 'Port ${config.listenAddress} is already in use',
+          return const CaddyError(
+            message: 'Port is already in use',
           );
         }
         return CaddyError(message: error);
@@ -164,7 +179,7 @@ class CaddyService {
     try {
       final String result;
       if (_isDesktop) {
-        result = _ffi!.status();
+        result = await _ffi!.status();
       } else {
         result = await _methodChannel!.status();
       }

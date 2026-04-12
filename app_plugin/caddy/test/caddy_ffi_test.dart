@@ -25,28 +25,28 @@ void main() {
       }
     });
 
-    test('setEnvironment returns empty string on success', () {
+    test('setEnvironment returns empty string on success', () async {
       if (!Platform.isLinux && !Platform.isMacOS) {
         return; // Skip on unsupported platforms
       }
 
       try {
         final ffi = CaddyFfi();
-        final result = ffi.setEnvironment('{}');
+        final result = await ffi.setEnvironment('{}');
         expect(result, isEmpty);
       } on ArgumentError catch (_) {
         // Library not found in test environment
       }
     });
 
-    test('status returns JSON when Caddy is not running', () {
+    test('status returns JSON when Caddy is not running', () async {
       if (!Platform.isLinux && !Platform.isMacOS) {
         return; // Skip on unsupported platforms
       }
 
       try {
         final ffi = CaddyFfi();
-        final result = ffi.status();
+        final result = await ffi.status();
         expect(result, contains('status'));
         expect(result, contains('stopped'));
       } on ArgumentError catch (_) {

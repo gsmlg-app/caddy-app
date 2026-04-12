@@ -34,6 +34,11 @@ class CaddyMethodHandler: NSObject {
                 let env = args?["env"] as? String ?? "{}"
                 let response = CaddyBridgeSetEnvironment(env)
                 DispatchQueue.main.async { result(response) }
+            case "adaptCaddyfile":
+                let args = call.arguments as? [String: Any]
+                let caddyfile = args?["caddyfile"] as? String ?? ""
+                let response = CaddyBridgeAdaptCaddyfile(caddyfile)
+                DispatchQueue.main.async { result(response) }
             default:
                 DispatchQueue.main.async { result(FlutterMethodNotImplemented) }
             }

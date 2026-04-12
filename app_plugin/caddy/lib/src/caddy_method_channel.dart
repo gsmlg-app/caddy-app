@@ -39,6 +39,14 @@ class CaddyMethodChannel {
     return result ?? '';
   }
 
+  Future<String> adaptCaddyfile(String caddyfileText) async {
+    final result =
+        await _methodChannel.invokeMethod<String>('adaptCaddyfile', {
+      'caddyfile': caddyfileText,
+    });
+    return result ?? '';
+  }
+
   Stream<String> get logStream {
     return _eventChannel.receiveBroadcastStream().map((event) => '$event');
   }
