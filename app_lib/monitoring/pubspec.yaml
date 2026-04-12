@@ -1,0 +1,19 @@
+name: app_monitoring
+description: Monitoring and observability library for Caddy App
+publish_to: "none"
+
+environment:
+  sdk: ">=3.8.0 <4.0.0"
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+  equatable: ^2.0.7
+  app_database: any
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  test: ^1.26.3
+  flutter_lints: ^6.0.0
