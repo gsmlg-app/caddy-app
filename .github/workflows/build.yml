@@ -74,7 +74,7 @@ jobs:
           tar -czvf ../../../../../caddy-app-linux.tar.gz .
 
       - name: Upload artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: caddy-app-linux
           path: caddy-app-linux.tar.gz
@@ -130,7 +130,7 @@ jobs:
           zip -r ../../../../../caddy-app-macos.zip *.app
 
       - name: Upload artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: caddy-app-macos
           path: caddy-app-macos.zip
@@ -171,7 +171,7 @@ jobs:
         run: Compress-Archive -Path build\windows\x64\runner\Release\* -DestinationPath caddy-app-windows.zip
 
       - name: Upload artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: caddy-app-windows
           path: caddy-app-windows.zip
@@ -237,7 +237,7 @@ jobs:
         run: flutter build apk --release
 
       - name: Upload artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: caddy-app-android
           path: build/app/outputs/flutter-apk/app-release.apk
@@ -300,7 +300,7 @@ jobs:
           zip -r ../ipa/caddy-app-ios.ipa Payload
 
       - name: Upload artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: caddy-app-ios
           path: build/ios/ipa/caddy-app-ios.ipa
