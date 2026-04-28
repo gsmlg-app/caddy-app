@@ -5,7 +5,7 @@ go 1.25.0
 require (
 	github.com/caddy-dns/cloudflare v0.2.2
 	github.com/caddy-dns/duckdns v0.5.0
-	github.com/caddy-dns/route53 v1.6.0
+	github.com/caddy-dns/route53 v1.6.2
 	github.com/caddyserver/caddy/v2 v2.11.2
 	github.com/ss098/certmagic-s3 v0.0.0-20250922022452-8af482af5f39
 )
@@ -92,7 +92,7 @@ require (
 	github.com/libdns/cloudflare v0.2.2 // indirect
 	github.com/libdns/duckdns v0.3.0 // indirect
 	github.com/libdns/libdns v1.1.1 // indirect
-	github.com/libdns/route53 v1.6.0 // indirect
+	github.com/libdns/route53 v1.6.2 // indirect
 	github.com/manifoldco/promptui v0.9.0 // indirect
 	github.com/mattn/go-colorable v0.1.14 // indirect
 	github.com/mattn/go-isatty v0.0.20 // indirect
